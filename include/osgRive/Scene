@@ -1,6 +1,7 @@
 #pragma once
 
 #include <osgRive/Export>
+#include <osgRive/TextureRenderer>
 
 #include <osg/Geode>
 #include <osg/Group>
@@ -10,14 +11,6 @@
 
 namespace osgRive
 {
-
-enum class DrawMode
-{
-    SCENE,
-    ARTBOARD,
-    ARTBOARD_INTERNAL,
-    NONE
-};
 
 // A directly addable OSG node that renders one Rive .riv scene/artboard into
 // an owned GL_RGBA8 texture and displays it on a default unit quad. The

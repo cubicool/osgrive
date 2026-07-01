@@ -1,7 +1,5 @@
 #include <osgRive/Scene>
 
-#include "rive_texture_renderer.hpp"
-
 #include <osg/BlendFunc>
 #include <osg/BoundingBox>
 #include <osg/ColorMask>
@@ -23,22 +21,6 @@ namespace osgRive
 
 namespace
 {
-
-RiveDrawMode toRiveDrawMode(DrawMode mode)
-{
-    switch (mode)
-    {
-        case DrawMode::SCENE:
-            return RiveDrawMode::scene;
-        case DrawMode::ARTBOARD:
-            return RiveDrawMode::artboard;
-        case DrawMode::ARTBOARD_INTERNAL:
-            return RiveDrawMode::artboardInternal;
-        case DrawMode::NONE:
-            return RiveDrawMode::none;
-    }
-    return RiveDrawMode::scene;
-}
 
 static const char* kQuadVert = R"(
 #version 330 core
@@ -149,7 +131,7 @@ private:
             m_renderer(std::move(rivPath), width, height)
         {}
 
-        RiveTextureRenderer m_renderer;
+        TextureRenderer m_renderer;
     };
 
     std::unique_ptr<Impl> m_impl;
@@ -290,15 +272,6 @@ void Scene::RenderDrawable::drawImplementation(osg::RenderInfo& renderInfo) cons
     }
 
     osg::State* state = renderInfo.getState();
-    state->applyTextureAttribute(0, m_texture.get());
-
-    osg::Texture::TextureObject* textureObject =
-        m_texture->getTextureObject(state->getContextID());
-    if (!textureObject)
-    {
-        return;
-    }
-
     const osg::FrameStamp* frameStamp = state->getFrameStamp();
     double simTime = frameStamp ? frameStamp->getSimulationTime() : 0.0;
     // Sentinel-initialized so frame 0 computes dt = 0 rather than a bogus
@@ -306,9 +279,10 @@ void Scene::RenderDrawable::drawImplementation(osg::RenderInfo& renderInfo) cons
     double dt = (m_lastSimTime >= 0.0) ? (simTime - m_lastSimTime) : 0.0;
     m_lastSimTime = simTime;
 
-    m_impl->m_renderer.renderToTexture(textureObject->id(),
-                                       static_cast<float>(dt),
-                                       toRiveDrawMode(m_drawMode));
+    m_impl->m_renderer.render(renderInfo,
+                              *m_texture,
+                              static_cast<float>(dt),
+                              m_drawMode);
     // Nothing else. No forceOSGMainPassState, no raw glEnable/glDisable/
     // glBlendFunc. The next Drawable in the RenderBin gets its own StateSet
     // applied via osg::State's normal per-leaf path in RenderLeaf::render(),

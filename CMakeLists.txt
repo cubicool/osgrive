@@ -18,11 +18,12 @@ find_package(OpenSceneGraph REQUIRED
 	osgShadow
 )
 
-# osgRive nodekit library: renders a Rive .riv scene into an
-# OSG-owned texture via osgRive::Scene, an osg::Drawable that participates in
-# normal OSG traversal (see include/osgRive/Scene).
+# osgRive nodekit library: renders a Rive .riv scene into an OSG-owned texture
+# via osgRive::Scene, an osg::Group that owns its producer drawable and display
+# geometry (see include/osgRive/Scene).
 add_library(osgRive
 	src/osgRive/Scene.cpp
+	src/osgRive/TextureRenderer.cpp
 	src/rive_texture_renderer.cpp
 )
 
