@@ -19,6 +19,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -65,6 +66,7 @@ void main()
 
 void drainGLErrors(const char* label)
 {
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
     bool printedHeader = false;
     for (;;)
     {
@@ -82,6 +84,9 @@ void drainGLErrors(const char* label)
         OSG_NOTICE << "  0x" << std::hex << static_cast<unsigned int>(err)
                    << std::dec << std::endl;
     }
+#else
+    (void)label;
+#endif
 }
 
 void forceOSGMainPassState(osg::State* state)
@@ -337,6 +342,39 @@ osg::ref_ptr<osg::Geode> makeTexturedQuad(osg::Texture2D* texture)
     geode->addDrawable(quad.get());
     return geode;
 }
+
+int runWithConsoleFPS(osgViewer::Viewer& viewer)
+{
+    using Clock = std::chrono::steady_clock;
+    constexpr double kReportIntervalSeconds = 5.0;
+
+    uint64_t frames = 0;
+    auto start = Clock::now();
+
+    while (!viewer.done())
+    {
+        viewer.frame();
+        ++frames;
+
+        const auto now = Clock::now();
+        const double elapsed =
+            std::chrono::duration_cast<std::chrono::duration<double>>(
+                now - start)
+                .count();
+        if (elapsed >= kReportIntervalSeconds)
+        {
+            std::printf("[osgRive monolith] %.3f FPS (%llu frames / %.3fs)\n",
+                        static_cast<double>(frames) / elapsed,
+                        static_cast<unsigned long long>(frames),
+                        elapsed);
+            std::fflush(stdout);
+            frames = 0;
+            start = now;
+        }
+    }
+
+    return 0;
+}
 } // namespace
 
 int main(int argc, char** argv)
@@ -344,6 +382,7 @@ int main(int argc, char** argv)
     bool renderRive = true;
     bool riveClearOnly = false;
     bool framebufferMode = false;
+    bool showStats = false;
     RiveDrawMode drawMode = RiveDrawMode::scene;
     const char* rivPathArg = nullptr;
     for (int i = 1; i < argc; ++i)
@@ -360,6 +399,10 @@ int main(int argc, char** argv)
         else if (arg == "--framebuffer")
         {
             framebufferMode = true;
+        }
+        else if (arg == "--stats")
+        {
+            showStats = true;
         }
         else if (arg == "--draw-scene")
         {
@@ -427,8 +470,11 @@ int main(int argc, char** argv)
             drawMode));
     }
 
-    viewer.addEventHandler(new osgViewer::StatsHandler());
+    if (showStats)
+    {
+        viewer.addEventHandler(new osgViewer::StatsHandler());
+    }
     viewer.setCameraManipulator(new osgGA::TrackballManipulator());
     viewer.setUpViewInWindow(50, 50, kWindowWidth, kWindowHeight);
-    return viewer.run();
+    return runWithConsoleFPS(viewer);
 }

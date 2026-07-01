@@ -5,6 +5,10 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 
+#ifdef OSGRIVE_ENABLE_OSGDEBUG_TRACE
+#include <osgDebug.hpp>
+#endif
+
 #include <cstdint>
 #include <string>
 
@@ -39,5 +43,8 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.setCameraManipulator(new osgGA::TrackballManipulator());
     viewer.setUpViewInWindow(50, 50, kWindowWidth, kWindowHeight);
+#ifdef OSGRIVE_ENABLE_OSGDEBUG_TRACE
+    viewer.setRealizeOperation(new osgDebug::GraphicsOperation());
+#endif
     return viewer.run();
 }

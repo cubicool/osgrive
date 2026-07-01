@@ -5,6 +5,7 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -153,6 +154,7 @@ GLuint makeQuadVAO()
 
 void drainGLErrors(const char* label)
 {
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
     bool printedHeader = false;
     for (;;)
     {
@@ -169,6 +171,9 @@ void drainGLErrors(const char* label)
         }
         std::fprintf(stderr, "  0x%04x\n", static_cast<unsigned int>(err));
     }
+#else
+    (void)label;
+#endif
 }
 
 void forceMainPassState(int framebufferWidth, int framebufferHeight)
@@ -253,7 +258,7 @@ int main(int argc, char** argv)
     }
 
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     if (!gladLoadCustomLoader(reinterpret_cast<GLADloadfunc>(glfwGetProcAddress)))
     {
@@ -266,6 +271,11 @@ int main(int argc, char** argv)
     GLuint vao = makeQuadVAO();
 
     RiveTextureRenderer rive(rivPath, kTextureWidth, kTextureHeight);
+
+    using Clock = std::chrono::steady_clock;
+    constexpr double kReportIntervalSeconds = 5.0;
+    uint64_t frames = 0;
+    auto fpsStart = Clock::now();
 
     double previousTime = glfwGetTime();
     while (!glfwWindowShouldClose(window))
@@ -304,6 +314,23 @@ int main(int argc, char** argv)
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        ++frames;
+        const auto fpsNow = Clock::now();
+        const double elapsed =
+            std::chrono::duration_cast<std::chrono::duration<double>>(
+                fpsNow - fpsStart)
+                .count();
+        if (elapsed >= kReportIntervalSeconds)
+        {
+            std::printf("[glfwRiveTexture] %.3f FPS (%llu frames / %.3fs)\n",
+                        static_cast<double>(frames) / elapsed,
+                        static_cast<unsigned long long>(frames),
+                        elapsed);
+            std::fflush(stdout);
+            frames = 0;
+            fpsStart = fpsNow;
+        }
     }
 
     glfwDestroyWindow(window);

@@ -44,6 +44,18 @@ void ensureRiveGLLoaded()
     loaded = true;
 }
 
+std::vector<uint8_t> readBinaryFile(const std::string& path)
+{
+    std::ifstream stream(path, std::ios::binary);
+    if (!stream)
+    {
+        throw std::runtime_error("failed to open " + path);
+    }
+    return {std::istreambuf_iterator<char>(stream),
+            std::istreambuf_iterator<char>()};
+}
+
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
 void drainGLErrors(const char* label)
 {
     bool printedHeader = false;
@@ -63,17 +75,7 @@ void drainGLErrors(const char* label)
         std::fprintf(stderr, "  0x%04x\n", static_cast<unsigned int>(err));
     }
 }
-
-std::vector<uint8_t> readBinaryFile(const std::string& path)
-{
-    std::ifstream stream(path, std::ios::binary);
-    if (!stream)
-    {
-        throw std::runtime_error("failed to open " + path);
-    }
-    return {std::istreambuf_iterator<char>(stream),
-            std::istreambuf_iterator<char>()};
-}
+#endif
 
 class ScopedGLRestore
 {
@@ -260,7 +262,9 @@ public:
         m_renderContext->flush({.renderTarget = m_externalTextureTarget.get()});
 
         glImpl->unbindGLInternalResources();
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
         drainGLErrors("after Rive clear-only");
+#endif
     }
 
 private:
@@ -271,7 +275,9 @@ private:
                         // uint32_t clearColor = 0xffff00ff)
                         uint32_t clearColor = 0xffff0000)
     {
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
         drainGLErrors("before Rive render");
+#endif
 
         auto* glImpl =
             m_renderContext
@@ -333,7 +339,9 @@ private:
 
         glImpl->unbindGLInternalResources();
 
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
         drainGLErrors("after Rive render");
+#endif
     }
 
     void ensureInitialized()

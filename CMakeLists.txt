@@ -6,6 +6,8 @@ set(RIVE_RUNTIME_DIR "/home/cubicool/dev/rive-runtime" CACHE PATH "Rive runtime 
 set(RIVE_BUILD_DIR "${RIVE_RUNTIME_DIR}/tests/out/debug" CACHE PATH "Built Rive debug output directory")
 option(OSGRIVE_DEBUG_GL_ERRORS "Drain and print GL errors around Rive backend renders" OFF)
 option(OSGRIVE_USE_SCOPED_GL_RESTORE "Restore host GL state around Rive backend renders" ON)
+option(OSGRIVE_ENABLE_OSGDEBUG_TRACE "Annotate osgRive draws with osgDebug GL debug groups/messages" OFF)
+set(OSGDEBUG_DIR "/home/cubicool/dev/osgdebug" CACHE PATH "osgDebug checkout")
 
 find_package(OpenSceneGraph REQUIRED
 	osg
@@ -67,6 +69,11 @@ if(OSGRIVE_USE_SCOPED_GL_RESTORE)
 	target_compile_definitions(osgRive PRIVATE OSGRIVE_USE_SCOPED_GL_RESTORE)
 endif()
 
+if(OSGRIVE_ENABLE_OSGDEBUG_TRACE)
+	target_compile_definitions(osgRive PUBLIC OSGRIVE_ENABLE_OSGDEBUG_TRACE)
+	target_include_directories(osgRive PUBLIC ${OSGDEBUG_DIR})
+endif()
+
 target_compile_options(osgRive PRIVATE
 	-w
 )
@@ -115,6 +122,9 @@ add_executable(osgrive-example-monolith
 	examples/osgrive_reference_monolith.cpp
 	src/rive_texture_renderer.cpp
 )
+if(OSGRIVE_DEBUG_GL_ERRORS)
+	target_compile_definitions(osgrive-example-monolith PRIVATE OSGRIVE_DEBUG_GL_ERRORS)
+endif()
 
 target_compile_features(osgrive-example-monolith PUBLIC cxx_std_20)
 target_link_libraries(osgrive-example-monolith PRIVATE
@@ -220,6 +230,9 @@ target_compile_definitions(glfwRiveTexture PRIVATE
 	YOGA_EXPORT=
 	_RIVE_INTERNAL_
 )
+if(OSGRIVE_DEBUG_GL_ERRORS)
+	target_compile_definitions(glfwRiveTexture PRIVATE OSGRIVE_DEBUG_GL_ERRORS)
+endif()
 target_compile_options(glfwRiveTexture PRIVATE
 	-w
 )

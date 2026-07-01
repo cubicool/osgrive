@@ -6,6 +6,10 @@
 #include <osg/State>
 #include <osg/Texture2D>
 
+#ifdef OSGRIVE_ENABLE_OSGDEBUG_TRACE
+#include <osgDebug.hpp>
+#endif
+
 #include <utility>
 
 namespace osgRive
@@ -36,7 +40,26 @@ public:
             return;
         }
 
-        m_renderer.renderToTexture(textureObject->id(), elapsedSeconds, drawMode);
+        {
+#ifdef OSGRIVE_ENABLE_OSGDEBUG_TRACE
+            osgDebug::Scoped riveScope(100, "osgRive: Rive renderToTexture");
+            osgDebug::messageInsert(
+                osgDebug::Type::MARKER,
+                101,
+                osgDebug::Severity::NOTIFICATION,
+                "STARTING RIVE");
+#endif
+            m_renderer.renderToTexture(textureObject->id(),
+                                       elapsedSeconds,
+                                       drawMode);
+#ifdef OSGRIVE_ENABLE_OSGDEBUG_TRACE
+            osgDebug::messageInsert(
+                osgDebug::Type::MARKER,
+                102,
+                osgDebug::Severity::NOTIFICATION,
+                "STOPPING RIVE");
+#endif
+        }
     }
 
 private:
