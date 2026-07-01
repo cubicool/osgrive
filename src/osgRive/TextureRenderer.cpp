@@ -13,79 +13,79 @@
 
 #include <utility>
 
-namespace osgRive
-{
+namespace osgRive {
 
-class TextureRenderer::Impl
-{
+class TextureRenderer::Impl {
 public:
-    Impl(std::string rivPath, uint32_t width, uint32_t height) :
-        m_renderer(std::move(rivPath), width, height)
-    {}
+	Impl(std::string rivPath, uint32_t width, uint32_t height):
+	m_renderer(std::move(rivPath), width, height) {}
 
-    uint32_t width() const { return m_renderer.width(); }
-    uint32_t height() const { return m_renderer.height(); }
+	uint32_t width() const { return m_renderer.width(); }
+	uint32_t height() const { return m_renderer.height(); }
 
-    void render(osg::RenderInfo& renderInfo,
-                osg::Texture2D& target,
-                float elapsedSeconds,
-                DrawMode drawMode)
-    {
-        osg::State* state = renderInfo.getState();
-        state->applyTextureAttribute(0, &target);
+	void render(
+		osg::RenderInfo& renderInfo,
+		osg::Texture2D& target,
+		float elapsedSeconds,
+		DrawMode drawMode
+	) {
+		osg::State* state = renderInfo.getState();
 
-        osg::Texture::TextureObject* textureObject =
-            target.getTextureObject(state->getContextID());
-        if (!textureObject)
-        {
-            return;
-        }
+		state->applyTextureAttribute(0, &target);
 
-        {
-            ScopedOSGStateRestore restoreOSGState(state);
+		osg::Texture::TextureObject* textureObject = target.getTextureObject(state->getContextID());
+
+		if(!textureObject) return;
+
+		{
+			ScopedOSGStateRestore restoreOSGState(state);
+
 #ifdef OSGRIVE_ENABLE_OSGDEBUG_TRACE
-            osgDebug::Scoped riveScope(100, "osgRive: Rive renderToTexture");
-            osgDebug::messageInsert(
-                osgDebug::Type::MARKER,
-                101,
-                osgDebug::Severity::NOTIFICATION,
-                "STARTING RIVE");
+			osgDebug::Scoped riveScope(100, "osgRive: Rive renderToTexture");
+			osgDebug::messageInsert(
+				osgDebug::Type::MARKER,
+				101,
+				osgDebug::Severity::NOTIFICATION,
+				"STARTING RIVE"
+			);
 #endif
-            m_renderer.renderToTexture(textureObject->id(),
-                                       elapsedSeconds,
-                                       drawMode);
+
+			m_renderer.renderToTexture(textureObject->id(), elapsedSeconds, drawMode);
+
 #ifdef OSGRIVE_ENABLE_OSGDEBUG_TRACE
-            osgDebug::messageInsert(
-                osgDebug::Type::MARKER,
-                102,
-                osgDebug::Severity::NOTIFICATION,
-                "STOPPING RIVE");
+			osgDebug::messageInsert(
+				osgDebug::Type::MARKER,
+				102,
+				osgDebug::Severity::NOTIFICATION,
+				"STOPPING RIVE"
+			);
 #endif
-        }
-    }
+		}
+	}
 
 private:
-    TextureRendererBackend m_renderer;
+	TextureRendererBackend m_renderer;
 };
 
-TextureRenderer::TextureRenderer(std::string rivPath,
-                                 uint32_t width,
-                                 uint32_t height) :
-    m_impl(std::make_unique<Impl>(std::move(rivPath), width, height))
-{}
+TextureRenderer::TextureRenderer(
+	std::string rivPath,
+	uint32_t width,
+	uint32_t height
+):
+m_impl(std::make_unique<Impl>(std::move(rivPath), width, height)) {}
 
 TextureRenderer::~TextureRenderer() = default;
 
 uint32_t TextureRenderer::width() const { return m_impl->width(); }
-
 uint32_t TextureRenderer::height() const { return m_impl->height(); }
 
-void TextureRenderer::render(osg::RenderInfo& renderInfo,
-                             osg::Texture2D& target,
-                             float elapsedSeconds,
-                             DrawMode drawMode)
-{
-    m_impl->render(renderInfo, target, elapsedSeconds, drawMode);
+void TextureRenderer::render(
+	osg::RenderInfo& renderInfo,
+	osg::Texture2D& target,
+	float elapsedSeconds,
+	DrawMode drawMode
+) {
+	m_impl->render(renderInfo, target, elapsedSeconds, drawMode);
 }
 
-} // namespace osgRive
+}

@@ -1,2 +1,3 @@
 # osgrive
-OpenSceneGraph support for the Rive vector graphics library
+
+OpenSceneGraph support for the [Rive](https://rive.app) vector graphics library

@@ -6,28 +6,25 @@
 #include <memory>
 #include <string>
 
-namespace osgRive
-{
+namespace osgRive {
 
-class TextureRendererBackend
-{
+class TextureRendererBackend {
 public:
-    TextureRendererBackend(std::string rivPath, uint32_t width, uint32_t height);
-    ~TextureRendererBackend();
+	TextureRendererBackend(std::string rivPath, uint32_t width, uint32_t height);
+	~TextureRendererBackend();
 
-    TextureRendererBackend(const TextureRendererBackend&) = delete;
-    TextureRendererBackend& operator=(const TextureRendererBackend&) = delete;
+	TextureRendererBackend(const TextureRendererBackend&) = delete;
+	TextureRendererBackend& operator=(const TextureRendererBackend&) = delete;
 
-    uint32_t width() const;
-    uint32_t height() const;
+	uint32_t width() const;
+	uint32_t height() const;
 
-    void renderToTexture(uint32_t textureID,
-                         float elapsedSeconds,
-                         DrawMode drawMode);
+	void renderToTexture(uint32_t textureID, float elapsedSeconds, DrawMode drawMode);
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> m_impl;
+	class Impl;
+
+	std::unique_ptr<Impl> m_impl;
 };
 
-} // namespace osgRive
+}

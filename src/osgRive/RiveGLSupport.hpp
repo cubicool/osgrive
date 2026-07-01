@@ -13,8 +13,7 @@
 #include <cstdio>
 #endif
 
-namespace osgRive
-{
+namespace osgRive {
 
 // Shared by TextureRendererBackend.cpp and FramebufferRendererBackend.cpp:
 // both are OSG-agnostic Rive backends that need glad's GL entry points
@@ -28,58 +27,51 @@ namespace osgRive
 
 extern "C" void (*glXGetProcAddressARB(const GLubyte* procName))(void);
 
-inline GLADapiproc getGLProcAddress(const char* name)
-{
-    return reinterpret_cast<GLADapiproc>(
-        glXGetProcAddressARB(reinterpret_cast<const GLubyte*>(name)));
+inline GLADapiproc getGLProcAddress(const char* name) {
+	return reinterpret_cast<GLADapiproc>(
+		glXGetProcAddressARB(reinterpret_cast<const GLubyte*>(name))
+	);
 }
 
-inline void ensureRiveGLLoaded()
-{
-    static bool loaded = false;
-    if (loaded)
-    {
-        return;
-    }
+inline void ensureRiveGLLoaded() {
+	static bool loaded = false;
 
-    if (!gladLoadCustomLoader(getGLProcAddress))
-    {
-        throw std::runtime_error("failed to load Rive GL entry points");
-    }
-    loaded = true;
+	if(loaded) return;
+
+	if(!gladLoadCustomLoader(getGLProcAddress)) throw std::runtime_error(
+		"failed to load Rive GL entry points"
+	);
+
+	loaded = true;
 }
 
-inline std::vector<uint8_t> readBinaryFile(const std::string& path)
-{
-    std::ifstream stream(path, std::ios::binary);
-    if (!stream)
-    {
-        throw std::runtime_error("failed to open " + path);
-    }
-    return {std::istreambuf_iterator<char>(stream),
-            std::istreambuf_iterator<char>()};
+inline std::vector<uint8_t> readBinaryFile(const std::string& path) {
+	std::ifstream stream(path, std::ios::binary);
+
+	if(!stream) throw std::runtime_error("failed to open " + path);
+
+	return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
 }
 
 #ifdef OSGRIVE_DEBUG_GL_ERRORS
-inline void drainGLErrors(const char* label)
-{
-    bool printedHeader = false;
-    for (;;)
-    {
-        GLenum err = glGetError();
-        if (err == GL_NO_ERROR)
-        {
-            return;
-        }
+// TODO: Remove all this!
+inline void drainGLErrors(const char* label) {
+	bool printedHeader = false;
 
-        if (!printedHeader)
-        {
-            std::fprintf(stderr, "Rive GL errors drained at %s:\n", label);
-            printedHeader = true;
-        }
-        std::fprintf(stderr, "  0x%04x\n", static_cast<unsigned int>(err));
-    }
+	for(;;) {
+		GLenum err = glGetError();
+
+		if(err == GL_NO_ERROR) return;
+
+		if(!printedHeader) {
+			std::fprintf(stderr, "Rive GL errors drained at %s:\n", label);
+
+			printedHeader = true;
+		}
+
+		std::fprintf(stderr, "  0x%04x\n", static_cast<unsigned int>(err));
+	}
 }
 #endif
 
-} // namespace osgRive
+}
