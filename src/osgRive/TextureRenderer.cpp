@@ -1,6 +1,6 @@
 #include <osgRive/TextureRenderer>
 
-#include "rive_texture_renderer.hpp"
+#include "TextureRendererBackend.hpp"
 
 #include <osg/RenderInfo>
 #include <osg/State>
@@ -10,26 +10,6 @@
 
 namespace osgRive
 {
-namespace
-{
-
-RiveDrawMode toRiveDrawMode(DrawMode mode)
-{
-    switch (mode)
-    {
-        case DrawMode::SCENE:
-            return RiveDrawMode::scene;
-        case DrawMode::ARTBOARD:
-            return RiveDrawMode::artboard;
-        case DrawMode::ARTBOARD_INTERNAL:
-            return RiveDrawMode::artboardInternal;
-        case DrawMode::NONE:
-            return RiveDrawMode::none;
-    }
-    return RiveDrawMode::scene;
-}
-
-} // namespace
 
 class TextureRenderer::Impl
 {
@@ -56,13 +36,11 @@ public:
             return;
         }
 
-        m_renderer.renderToTexture(textureObject->id(),
-                                   elapsedSeconds,
-                                   toRiveDrawMode(drawMode));
+        m_renderer.renderToTexture(textureObject->id(), elapsedSeconds, drawMode);
     }
 
 private:
-    RiveTextureRenderer m_renderer;
+    TextureRendererBackend m_renderer;
 };
 
 TextureRenderer::TextureRenderer(std::string rivPath,

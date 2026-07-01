@@ -24,7 +24,7 @@ find_package(OpenSceneGraph REQUIRED
 add_library(osgRive
 	src/osgRive/Scene.cpp
 	src/osgRive/TextureRenderer.cpp
-	src/rive_texture_renderer.cpp
+	src/osgRive/TextureRendererBackend.cpp
 )
 
 target_compile_features(osgRive PUBLIC cxx_std_20)
