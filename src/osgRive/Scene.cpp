@@ -1,5 +1,7 @@
 #include <osgRive/Scene>
 
+#include <osgRive/FramebufferRenderer>
+
 #include <osg/BlendFunc>
 #include <osg/BoundingBox>
 #include <osg/ColorMask>
@@ -146,12 +148,61 @@ private:
     mutable double m_lastSimTime = -1.0;
 };
 
+// RenderTarget::FRAMEBUFFER producer: renders directly into whatever
+// framebuffer is bound when its turn comes up in the traversal (typically
+// OSG's own back buffer) instead of into an owned texture. No visible
+// geometry of its own, same as RenderDrawable, and for the same reason
+// (see computeBoundingBox() below) -- but unlike RenderDrawable, it is the
+// *only* child Scene owns in this mode: there is no display quad to sample
+// a texture, since Rive is compositing directly into the framebuffer.
+class Scene::FramebufferRenderDrawable : public osg::Drawable
+{
+public:
+    FramebufferRenderDrawable() = default;
+    FramebufferRenderDrawable(const std::string& rivPath, unsigned int width, unsigned int height);
+    FramebufferRenderDrawable(const FramebufferRenderDrawable& drawable,
+                              const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+    META_Object(osgRive, FramebufferRenderDrawable)
+
+    void setDrawMode(DrawMode mode);
+    DrawMode getDrawMode() const;
+
+    void drawImplementation(osg::RenderInfo& renderInfo) const override;
+    osg::BoundingBox computeBoundingBox() const override;
+
+protected:
+    ~FramebufferRenderDrawable() override;
+
+private:
+    class Impl
+    {
+    public:
+        Impl(std::string rivPath, unsigned int width, unsigned int height) :
+            m_renderer(std::move(rivPath), width, height)
+        {}
+
+        FramebufferRenderer m_renderer;
+    };
+
+    std::unique_ptr<Impl> m_impl;
+    std::string m_rivPath;
+    unsigned int m_width = 0;
+    unsigned int m_height = 0;
+    DrawMode m_drawMode = DrawMode::SCENE;
+    mutable double m_lastSimTime = -1.0;
+};
+
 Scene::Scene() {}
 
-Scene::Scene(const std::string& rivPath, unsigned int width, unsigned int height) :
+Scene::Scene(const std::string& rivPath,
+            unsigned int width,
+            unsigned int height,
+            RenderTarget renderTarget) :
     m_rivPath(rivPath),
     m_width(width),
-    m_height(height)
+    m_height(height),
+    m_renderTarget(renderTarget)
 {
     init(rivPath, width, height);
 }
@@ -161,7 +212,8 @@ Scene::Scene(const Scene& scene, const osg::CopyOp& copyop) :
     m_rivPath(scene.m_rivPath),
     m_width(scene.m_width),
     m_height(scene.m_height),
-    m_drawMode(scene.m_drawMode)
+    m_drawMode(scene.m_drawMode),
+    m_renderTarget(scene.m_renderTarget)
 {
     removeChildren(0, getNumChildren());
     if (!m_rivPath.empty())
@@ -180,9 +232,15 @@ void Scene::setDrawMode(DrawMode mode)
     {
         m_renderDrawable->setDrawMode(mode);
     }
+    if (m_framebufferDrawable)
+    {
+        m_framebufferDrawable->setDrawMode(mode);
+    }
 }
 
 DrawMode Scene::getDrawMode() const { return m_drawMode; }
+
+RenderTarget Scene::getRenderTarget() const { return m_renderTarget; }
 
 osg::Texture2D* Scene::getTexture()
 {
@@ -200,6 +258,27 @@ const osg::Geode* Scene::getDisplayGeode() const { return m_displayGeode.get(); 
 
 void Scene::init(const std::string& rivPath, unsigned int width, unsigned int height)
 {
+    if (m_renderTarget == RenderTarget::FRAMEBUFFER)
+    {
+        m_framebufferDrawable = new FramebufferRenderDrawable(rivPath, width, height);
+        m_framebufferDrawable->setDrawMode(m_drawMode);
+        // A high bin number so this draws after any other content the
+        // caller's scene graph contributes this frame (default OSG content
+        // sits at bin 0 in the same "RenderBin" bin group unless it says
+        // otherwise) -- mirrors the legacy monolith's post-draw-callback
+        // timing ("Rive composites on top of whatever OSG left in the back
+        // buffer") using in-graph traversal ordering instead of a
+        // Camera::DrawCallback running outside it.
+        m_framebufferDrawable->getOrCreateStateSet()->setRenderBinDetails(10, "RenderBin");
+
+        osg::ref_ptr<osg::Geode> producerGeode = new osg::Geode;
+        producerGeode->setCullingActive(false);
+        producerGeode->addDrawable(m_framebufferDrawable.get());
+
+        addChild(producerGeode.get());
+        return;
+    }
+
     m_renderDrawable = new RenderDrawable(rivPath, width, height);
     m_renderDrawable->setDrawMode(m_drawMode);
     m_renderDrawable->getOrCreateStateSet()->setRenderBinDetails(0, "RenderBin");
@@ -300,6 +379,73 @@ osg::BoundingBox Scene::RenderDrawable::computeBoundingBox() const
     // not contribute to the scene's bounding sphere -- an arbitrary non-empty
     // box here would skew camera auto-framing (e.g. TrackballManipulator's
     // home position) for whatever actual geometry samples the texture.
+    return osg::BoundingBox();
+}
+
+Scene::FramebufferRenderDrawable::FramebufferRenderDrawable(
+    const std::string& rivPath,
+    unsigned int width,
+    unsigned int height) :
+    m_rivPath(rivPath),
+    m_width(width),
+    m_height(height)
+{
+    // Never frustum-culled away, same reasoning as RenderDrawable: this
+    // Drawable's visible effect (compositing into the framebuffer) has
+    // nothing to do with where it sits in the 3D scene graph.
+    setCullingActive(false);
+    setUseDisplayList(false);
+    setUseVertexBufferObjects(false);
+
+    m_impl = std::make_unique<Impl>(rivPath, width, height);
+}
+
+Scene::FramebufferRenderDrawable::FramebufferRenderDrawable(
+    const FramebufferRenderDrawable& drawable,
+    const osg::CopyOp& copyop) :
+    osg::Drawable(drawable, copyop),
+    m_rivPath(drawable.m_rivPath),
+    m_width(drawable.m_width),
+    m_height(drawable.m_height),
+    m_drawMode(drawable.m_drawMode)
+{
+    setCullingActive(false);
+    setUseDisplayList(false);
+    setUseVertexBufferObjects(false);
+
+    // See RenderDrawable's copy constructor: same reasoning, not a deep copy
+    // of live Rive/GL resources.
+    if (!m_rivPath.empty())
+    {
+        m_impl = std::make_unique<Impl>(m_rivPath, m_width, m_height);
+    }
+}
+
+Scene::FramebufferRenderDrawable::~FramebufferRenderDrawable() = default;
+
+void Scene::FramebufferRenderDrawable::setDrawMode(DrawMode mode) { m_drawMode = mode; }
+
+DrawMode Scene::FramebufferRenderDrawable::getDrawMode() const { return m_drawMode; }
+
+void Scene::FramebufferRenderDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
+{
+    if (!m_impl)
+    {
+        return;
+    }
+
+    osg::State* state = renderInfo.getState();
+    const osg::FrameStamp* frameStamp = state->getFrameStamp();
+    double simTime = frameStamp ? frameStamp->getSimulationTime() : 0.0;
+    double dt = (m_lastSimTime >= 0.0) ? (simTime - m_lastSimTime) : 0.0;
+    m_lastSimTime = simTime;
+
+    m_impl->m_renderer.render(renderInfo, static_cast<float>(dt), m_drawMode);
+}
+
+osg::BoundingBox Scene::FramebufferRenderDrawable::computeBoundingBox() const
+{
+    // Deliberately invalid/empty -- see RenderDrawable::computeBoundingBox().
     return osg::BoundingBox();
 }
 

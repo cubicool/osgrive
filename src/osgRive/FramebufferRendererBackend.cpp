@@ -1,4 +1,4 @@
-#include "TextureRendererBackend.hpp"
+#include "FramebufferRendererBackend.hpp"
 
 #include "RiveGLSupport.hpp"
 
@@ -18,7 +18,7 @@
 namespace osgRive
 {
 
-class TextureRendererBackend::Impl
+class FramebufferRendererBackend::Impl
 {
 public:
     Impl(std::string rivPath, uint32_t width, uint32_t height) :
@@ -28,25 +28,37 @@ public:
     uint32_t width() const { return m_width; }
     uint32_t height() const { return m_height; }
 
-    void renderToTexture(uint32_t textureID,
-                         float elapsedSeconds,
-                         DrawMode drawMode)
+    void renderToCurrentFramebuffer(uint32_t drawFramebufferID,
+                                    float elapsedSeconds,
+                                    DrawMode drawMode)
     {
         ensureRiveGLLoaded();
         ensureInitialized();
 
-        if (!m_textureTarget)
+        // Reuse the previous frame's FramebufferRenderTargetGL as long as
+        // nothing it depends on has changed -- constructing a fresh one
+        // every frame was flagged as an unnecessary cost in earlier
+        // benchmarking (see CODEX.md). Only the FBO id can realistically
+        // change frame to frame (e.g. the default framebuffer swapping, or
+        // a resize); width/height come from this backend's construction
+        // and sampleCount is always 0 here.
+        if (!m_framebufferTarget || m_lastFramebufferID != drawFramebufferID)
         {
-            m_textureTarget =
-                rive::make_rcp<rive::gpu::TextureRenderTargetGL>(m_width,
-                                                                 m_height);
+            m_framebufferTarget =
+                rive::make_rcp<rive::gpu::FramebufferRenderTargetGL>(
+                    m_width,
+                    m_height,
+                    static_cast<GLuint>(drawFramebufferID),
+                    0);
+            m_lastFramebufferID = drawFramebufferID;
         }
-        m_textureTarget->setTargetTexture(textureID);
 
+        // preserveRenderTarget: composite on top of whatever OSG already
+        // rendered into this framebuffer this frame, instead of clearing it.
         renderToTarget(elapsedSeconds,
-                       m_textureTarget.get(),
+                       m_framebufferTarget.get(),
                        drawMode,
-                       rive::gpu::LoadAction::clear,
+                       rive::gpu::LoadAction::preserveRenderTarget,
                        0x00000000u);
     }
 
@@ -177,29 +189,31 @@ private:
     uint32_t m_height = 0;
 
     std::unique_ptr<rive::gpu::RenderContext> m_renderContext;
-    rive::rcp<rive::gpu::TextureRenderTargetGL> m_textureTarget;
+    rive::rcp<rive::gpu::FramebufferRenderTargetGL> m_framebufferTarget;
+    uint32_t m_lastFramebufferID = 0;
     rive::rcp<rive::File> m_file;
     std::unique_ptr<rive::ArtboardInstance> m_artboard;
     std::unique_ptr<rive::Scene> m_scene;
 };
 
-TextureRendererBackend::TextureRendererBackend(std::string rivPath,
-                                               uint32_t width,
-                                               uint32_t height) :
+FramebufferRendererBackend::FramebufferRendererBackend(std::string rivPath,
+                                                        uint32_t width,
+                                                        uint32_t height) :
     m_impl(std::make_unique<Impl>(std::move(rivPath), width, height))
 {}
 
-TextureRendererBackend::~TextureRendererBackend() = default;
+FramebufferRendererBackend::~FramebufferRendererBackend() = default;
 
-uint32_t TextureRendererBackend::width() const { return m_impl->width(); }
+uint32_t FramebufferRendererBackend::width() const { return m_impl->width(); }
 
-uint32_t TextureRendererBackend::height() const { return m_impl->height(); }
+uint32_t FramebufferRendererBackend::height() const { return m_impl->height(); }
 
-void TextureRendererBackend::renderToTexture(uint32_t textureID,
-                                             float elapsedSeconds,
-                                             DrawMode drawMode)
+void FramebufferRendererBackend::renderToCurrentFramebuffer(
+    uint32_t drawFramebufferID,
+    float elapsedSeconds,
+    DrawMode drawMode)
 {
-    m_impl->renderToTexture(textureID, elapsedSeconds, drawMode);
+    m_impl->renderToCurrentFramebuffer(drawFramebufferID, elapsedSeconds, drawMode);
 }
 
 } // namespace osgRive

@@ -22,20 +22,44 @@ constexpr uint32_t kRiveTextureHeight = 512;
 
 int main(int argc, char** argv)
 {
+    bool framebufferMode = false;
+    const char* rivPathArg = nullptr;
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::string(argv[i]) == "--framebuffer")
+        {
+            framebufferMode = true;
+        }
+        else
+        {
+            rivPathArg = argv[i];
+        }
+    }
+
     const std::string rivPath =
-        argc > 1
-            ? argv[1]
+        rivPathArg != nullptr
+            ? rivPathArg
             : "/home/cubicool/dev/rive-runtime/renderer/webgpu_player/"
               "rivs/towersDemo.riv";
 
+    // RenderTarget::FRAMEBUFFER composites directly into the window's back
+    // buffer, screen-space, so its target dimensions should match the
+    // window instead of an arbitrary offscreen texture size.
     osg::ref_ptr<osgRive::Scene> riveScene =
-        new osgRive::Scene(rivPath, kRiveTextureWidth, kRiveTextureHeight);
+        framebufferMode
+            ? new osgRive::Scene(rivPath,
+                                 kWindowWidth,
+                                 kWindowHeight,
+                                 osgRive::RenderTarget::FRAMEBUFFER)
+            : new osgRive::Scene(rivPath, kRiveTextureWidth, kRiveTextureHeight);
 
-    // The display quad is built flat in the XY plane (normal +Z, quad "up"
-    // along +Y). OSG's default trackball home view is set up for a Z-up
-    // world, so without this the quad starts out edge-on to the camera
-    // instead of facing it. Rotate +90 degrees about X to stand it upright,
-    // facing the camera, with the quad's +Y ("up") mapped to world +Z.
+    // The display quad (RenderTarget::TEXTURE only) is built flat in the XY
+    // plane (normal +Z, quad "up" along +Y). OSG's default trackball home
+    // view is set up for a Z-up world, so without this the quad starts out
+    // edge-on to the camera instead of facing it. Rotate +90 degrees about X
+    // to stand it upright, facing the camera, with the quad's +Y ("up")
+    // mapped to world +Z. Harmless in FRAMEBUFFER mode too: that content is
+    // screen-space and ignores this transform entirely.
     osg::ref_ptr<osg::MatrixTransform> root = new osg::MatrixTransform;
     root->setMatrix(osg::Matrix::rotate(osg::PI_2, osg::Vec3(1.0, 0.0, 0.0)));
     root->addChild(riveScene.get());

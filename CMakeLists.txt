@@ -28,6 +28,8 @@ add_library(osgRive
 	src/osgRive/Scene.cpp
 	src/osgRive/TextureRenderer.cpp
 	src/osgRive/TextureRendererBackend.cpp
+	src/osgRive/FramebufferRenderer.cpp
+	src/osgRive/FramebufferRendererBackend.cpp
 )
 
 target_compile_features(osgRive PUBLIC cxx_std_20)

@@ -1,0 +1,46 @@
+#pragma once
+
+#include <osgRive/Export>
+#include <osgRive/TextureRenderer>
+
+#include <cstdint>
+#include <memory>
+#include <string>
+
+namespace osg
+{
+class RenderInfo;
+}
+
+namespace osgRive
+{
+
+// Renders a Rive .riv scene directly into whatever GL framebuffer is
+// currently bound at render time (typically OSG's own back buffer),
+// compositing over its existing contents instead of into an owned offscreen
+// texture. Screen-space only: unlike TextureRenderer's output, this content
+// does not participate in 3D placement/transforms. Mirrors TextureRenderer's
+// shape; see its private TextureRendererBackend counterpart,
+// FramebufferRendererBackend, for the Rive-facing implementation.
+class OSGRIVE_EXPORT FramebufferRenderer
+{
+public:
+    FramebufferRenderer(std::string rivPath, uint32_t width, uint32_t height);
+    ~FramebufferRenderer();
+
+    FramebufferRenderer(const FramebufferRenderer&) = delete;
+    FramebufferRenderer& operator=(const FramebufferRenderer&) = delete;
+
+    uint32_t width() const;
+    uint32_t height() const;
+
+    void render(osg::RenderInfo& renderInfo,
+                float elapsedSeconds,
+                DrawMode drawMode);
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
+};
+
+} // namespace osgRive
