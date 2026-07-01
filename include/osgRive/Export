@@ -1,11 +1,11 @@
 #pragma once
 
 #if defined(_MSC_VER)
-    #if defined(OSGRIVE_LIBRARY)
-        #define OSGRIVE_EXPORT __declspec(dllexport)
-    #else
-        #define OSGRIVE_EXPORT __declspec(dllimport)
-    #endif
+	#if defined(OSGRIVE_LIBRARY)
+		#define OSGRIVE_EXPORT __declspec(dllexport)
+	#else
+		#define OSGRIVE_EXPORT __declspec(dllimport)
+	#endif
 #else
-    #define OSGRIVE_EXPORT
+	#define OSGRIVE_EXPORT
 #endif

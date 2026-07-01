@@ -13,76 +13,75 @@ namespace osgRive
 {
 
 // Selects how a Scene composites Rive's rendering into the OSG scene:
-//   TEXTURE     -- renders into an owned GL_RGBA8 texture, displayed on a
-//                  default unit quad. 3D-placeable, participates in normal
-//                  scene transforms. The default.
-//   FRAMEBUFFER -- renders directly into whatever framebuffer is bound when
-//                  the producer drawable's turn comes up (typically OSG's
-//                  own back buffer), compositing over already-rendered
-//                  content. Screen-space only: does not participate in 3D
-//                  placement/transforms, and there is no owned texture or
-//                  display quad (getTexture()/getDisplayGeode() are null).
-// Fixed at construction -- switching strategies means building a new Scene,
-// not mutating an existing one, since the two modes own structurally
-// different children.
-enum class RenderTarget
-{
-    TEXTURE,
-    FRAMEBUFFER
+//
+// TEXTURE: renders into an owned GL_RGBA8 texture, displayed on a default unit quad. 3D-placeable,
+// participates in normal scene transforms. The default.
+//
+// FRAMEBUFFER: renders directly into whatever framebuffer is bound when the producer drawable's
+// turn comes up (typically OSG's own back buffer), compositing over already-rendered
+// content. Screen-space only: does not participate in 3D placement/transforms, and there is no
+// owned texture or display quad (getTexture()/getDisplayGeode() are null).
+//
+// Fixed at construction; switching strategies means building a new Scene, not mutating an existing
+// one, since the two modes own structurally different children.
+enum class RenderTarget {
+	TEXTURE,
+	FRAMEBUFFER
 };
 
-// A directly addable OSG node that renders one Rive .riv scene/artboard,
-// either into an owned GL_RGBA8 texture displayed on a default unit quad
-// (RenderTarget::TEXTURE) or directly into the current framebuffer
-// (RenderTarget::FRAMEBUFFER). The internal producer drawable, producer
-// geode, and (in TEXTURE mode) textured display geometry, render-bin
-// ordering, blend state, and ColorMask repair are owned here so callers can
-// treat this like ordinary visible OSG content.
-class OSGRIVE_EXPORT Scene : public osg::Group
-{
+// A directly addable OSG node that renders one Rive .riv scene/artboard, either into an owned
+// GL_RGBA8 texture displayed on a default unit quad (RenderTarget::TEXTURE) or directly into the
+// current framebuffer (RenderTarget::FRAMEBUFFER). The internal producer drawable, producer geode,
+// and (in TEXTURE mode) textured display geometry, render-bin ordering, blend state, and ColorMask
+// repair are owned here so callers can treat this like ordinary visible OSG content.
+//
+// TODO: Make this a MatrixTransform instead!
+class OSGRIVE_EXPORT Scene: public osg::Group {
 public:
-    Scene();
-    Scene(const std::string& rivPath,
-          unsigned int width,
-          unsigned int height,
-          RenderTarget renderTarget = RenderTarget::TEXTURE);
-    Scene(const Scene& scene, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+	Scene();
+	Scene(
+		const std::string& rivPath,
+		unsigned int width,
+		unsigned int height,
+		RenderTarget renderTarget=RenderTarget::TEXTURE
+	);
+	Scene(const Scene& scene, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
 
-    META_Object(osgRive, Scene)
+	META_Object(osgRive, Scene)
 
-    void setDrawMode(DrawMode mode);
-    DrawMode getDrawMode() const;
+	void setDrawMode(DrawMode mode);
+	DrawMode getDrawMode() const;
 
-    RenderTarget getRenderTarget() const;
+	RenderTarget getRenderTarget() const;
 
-    // The texture Rive renders into. Valid immediately after construction
-    // in RenderTarget::TEXTURE mode; contents become live after the first
-    // successful draw. Always null in RenderTarget::FRAMEBUFFER mode.
-    osg::Texture2D* getTexture();
-    const osg::Texture2D* getTexture() const;
+	// The texture Rive renders into. Valid immediately after construction in RenderTarget::TEXTURE
+	// mode; contents become live after the first successful draw. Always null in
+	// RenderTarget::FRAMEBUFFER mode.
+	osg::Texture2D* getTexture();
+	const osg::Texture2D* getTexture() const;
 
-    // Always null in RenderTarget::FRAMEBUFFER mode -- there is no display
-    // quad to host, Rive draws directly into the framebuffer instead.
-    osg::Geode* getDisplayGeode();
-    const osg::Geode* getDisplayGeode() const;
+	// Always null in RenderTarget::FRAMEBUFFER mode -- there is no display quad to host, Rive draws
+	// directly into the framebuffer instead.
+	osg::Geode* getDisplayGeode();
+	const osg::Geode* getDisplayGeode() const;
 
 protected:
-    ~Scene() override;
+	~Scene() override;
 
 private:
-    class RenderDrawable;
-    class FramebufferRenderDrawable;
+	class TextureRenderDrawable;
+	class FramebufferRenderDrawable;
 
-    void init(const std::string& rivPath, unsigned int width, unsigned int height);
+	void init(const std::string& rivPath, unsigned int width, unsigned int height);
 
-    osg::ref_ptr<RenderDrawable> m_renderDrawable;
-    osg::ref_ptr<FramebufferRenderDrawable> m_framebufferDrawable;
-    osg::ref_ptr<osg::Geode> m_displayGeode;
-    std::string m_rivPath;
-    unsigned int m_width = 0;
-    unsigned int m_height = 0;
-    DrawMode m_drawMode = DrawMode::SCENE;
-    RenderTarget m_renderTarget = RenderTarget::TEXTURE;
+	osg::ref_ptr<TextureRenderDrawable> m_renderDrawable;
+	osg::ref_ptr<FramebufferRenderDrawable> m_framebufferDrawable;
+	osg::ref_ptr<osg::Geode> m_displayGeode;
+	std::string m_rivPath;
+	unsigned int m_width = 0;
+	unsigned int m_height = 0;
+	DrawMode m_drawMode = DrawMode::SCENE;
+	RenderTarget m_renderTarget = RenderTarget::TEXTURE;
 };
 
-} // namespace osgRive
+}

@@ -7,13 +7,9 @@
 #include <memory>
 #include <string>
 
-namespace osg
-{
-class RenderInfo;
-}
+namespace osg { class RenderInfo; }
 
-namespace osgRive
-{
+namespace osgRive {
 
 // Renders a Rive .riv scene directly into whatever GL framebuffer is
 // currently bound at render time (typically OSG's own back buffer),
@@ -22,25 +18,23 @@ namespace osgRive
 // does not participate in 3D placement/transforms. Mirrors TextureRenderer's
 // shape; see its private TextureRendererBackend counterpart,
 // FramebufferRendererBackend, for the Rive-facing implementation.
-class OSGRIVE_EXPORT FramebufferRenderer
-{
+class OSGRIVE_EXPORT FramebufferRenderer {
 public:
-    FramebufferRenderer(std::string rivPath, uint32_t width, uint32_t height);
-    ~FramebufferRenderer();
+	FramebufferRenderer(std::string rivPath, uint32_t width, uint32_t height);
+	~FramebufferRenderer();
 
-    FramebufferRenderer(const FramebufferRenderer&) = delete;
-    FramebufferRenderer& operator=(const FramebufferRenderer&) = delete;
+	FramebufferRenderer(const FramebufferRenderer&) = delete;
+	FramebufferRenderer& operator=(const FramebufferRenderer&) = delete;
 
-    uint32_t width() const;
-    uint32_t height() const;
+	uint32_t width() const;
+	uint32_t height() const;
 
-    void render(osg::RenderInfo& renderInfo,
-                float elapsedSeconds,
-                DrawMode drawMode);
+	void render(osg::RenderInfo& renderInfo, float elapsedSeconds, DrawMode drawMode);
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> m_impl;
+	class Impl;
+
+	std::unique_ptr<Impl> m_impl;
 };
 
-} // namespace osgRive
+}

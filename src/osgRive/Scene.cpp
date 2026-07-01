@@ -102,13 +102,13 @@ osg::ref_ptr<osg::Geometry> makeDisplayQuad(osg::Texture2D* texture) {
 
 }
 
-class Scene::RenderDrawable : public osg::Drawable {
+class Scene::TextureRenderDrawable : public osg::Drawable {
 public:
-	RenderDrawable() = default;
-	RenderDrawable(const std::string& rivPath, unsigned int width, unsigned int height);
-	RenderDrawable(const RenderDrawable& drawable, const osg::CopyOp& co=osg::CopyOp::SHALLOW_COPY);
+	TextureRenderDrawable() = default;
+	TextureRenderDrawable(const std::string& rivPath, unsigned int width, unsigned int height);
+	TextureRenderDrawable(const TextureRenderDrawable& drawable, const osg::CopyOp& co=osg::CopyOp::SHALLOW_COPY);
 
-	META_Object(osgRive, RenderDrawable)
+	META_Object(osgRive, TextureRenderDrawable)
 
 	void setDrawMode(DrawMode mode);
 	DrawMode getDrawMode() const;
@@ -120,7 +120,7 @@ public:
 	osg::BoundingBox computeBoundingBox() const override;
 
 protected:
-	~RenderDrawable() override;
+	~TextureRenderDrawable() override;
 
 private:
 	class Impl {
@@ -263,7 +263,7 @@ void Scene::init(const std::string& rivPath, unsigned int width, unsigned int he
 		return;
 	}
 
-	m_renderDrawable = new RenderDrawable(rivPath, width, height);
+	m_renderDrawable = new TextureRenderDrawable(rivPath, width, height);
 
 	m_renderDrawable->setDrawMode(m_drawMode);
 	m_renderDrawable->getOrCreateStateSet()->setRenderBinDetails(0, "RenderBin");
@@ -280,7 +280,7 @@ void Scene::init(const std::string& rivPath, unsigned int width, unsigned int he
 	addChild(m_displayGeode.get());
 }
 
-Scene::RenderDrawable::RenderDrawable(
+Scene::TextureRenderDrawable::TextureRenderDrawable(
 	const std::string& rivPath,
 	unsigned int width,
 	unsigned int height
@@ -299,7 +299,7 @@ m_height(height) {
 	m_impl = std::make_unique<Impl>(rivPath, width, height);
 }
 
-Scene::RenderDrawable::RenderDrawable(const RenderDrawable& drawable, const osg::CopyOp& copyop):
+Scene::TextureRenderDrawable::TextureRenderDrawable(const TextureRenderDrawable& drawable, const osg::CopyOp& copyop):
 osg::Drawable(drawable, copyop),
 m_rivPath(drawable.m_rivPath),
 m_width(drawable.m_width),
@@ -320,17 +320,17 @@ m_drawMode(drawable.m_drawMode) {
 	}
 }
 
-Scene::RenderDrawable::~RenderDrawable() = default;
+Scene::TextureRenderDrawable::~TextureRenderDrawable() = default;
 
-void Scene::RenderDrawable::setDrawMode(DrawMode mode) { m_drawMode = mode; }
+void Scene::TextureRenderDrawable::setDrawMode(DrawMode mode) { m_drawMode = mode; }
 
-DrawMode Scene::RenderDrawable::getDrawMode() const { return m_drawMode; }
+DrawMode Scene::TextureRenderDrawable::getDrawMode() const { return m_drawMode; }
 
-osg::Texture2D* Scene::RenderDrawable::getTexture() { return m_texture.get(); }
+osg::Texture2D* Scene::TextureRenderDrawable::getTexture() { return m_texture.get(); }
 
-const osg::Texture2D* Scene::RenderDrawable::getTexture() const { return m_texture.get(); }
+const osg::Texture2D* Scene::TextureRenderDrawable::getTexture() const { return m_texture.get(); }
 
-void Scene::RenderDrawable::drawImplementation(osg::RenderInfo& renderInfo) const {
+void Scene::TextureRenderDrawable::drawImplementation(osg::RenderInfo& renderInfo) const {
 	if(!m_impl || !m_texture) return;
 
 	osg::State* state = renderInfo.getState();
@@ -355,7 +355,7 @@ void Scene::RenderDrawable::drawImplementation(osg::RenderInfo& renderInfo) cons
 	// real nested apply(), not a standalone one.
 }
 
-osg::BoundingBox Scene::RenderDrawable::computeBoundingBox() const {
+osg::BoundingBox Scene::TextureRenderDrawable::computeBoundingBox() const {
 	// Deliberately invalid/empty: this Drawable has no visible geometry of
 	// its own (it only writes into a texture sampled elsewhere), so it must
 	// not contribute to the scene's bounding sphere -- an arbitrary non-empty

@@ -6,43 +6,41 @@
 #include <memory>
 #include <string>
 
-namespace osg
-{
-class RenderInfo;
-class Texture2D;
+namespace osg {
+	class RenderInfo;
+	class Texture2D;
 }
 
-namespace osgRive
-{
+namespace osgRive {
 
-enum class DrawMode
-{
-    SCENE,
-    ARTBOARD,
-    ARTBOARD_INTERNAL,
-    NONE
+enum class DrawMode {
+	SCENE,
+	ARTBOARD,
+	ARTBOARD_INTERNAL,
+	NONE
 };
 
-class OSGRIVE_EXPORT TextureRenderer
-{
+class OSGRIVE_EXPORT TextureRenderer {
 public:
-    TextureRenderer(std::string rivPath, uint32_t width, uint32_t height);
-    ~TextureRenderer();
+	TextureRenderer(std::string rivPath, uint32_t width, uint32_t height);
+	~TextureRenderer();
 
-    TextureRenderer(const TextureRenderer&) = delete;
-    TextureRenderer& operator=(const TextureRenderer&) = delete;
+	TextureRenderer(const TextureRenderer&) = delete;
+	TextureRenderer& operator=(const TextureRenderer&) = delete;
 
-    uint32_t width() const;
-    uint32_t height() const;
+	uint32_t width() const;
+	uint32_t height() const;
 
-    void render(osg::RenderInfo& renderInfo,
-                osg::Texture2D& target,
-                float elapsedSeconds,
-                DrawMode drawMode);
+	void render(
+		osg::RenderInfo& renderInfo,
+		osg::Texture2D& target,
+		float elapsedSeconds,
+		DrawMode drawMode
+	);
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> m_impl;
+	class Impl;
+	std::unique_ptr<Impl> m_impl;
 };
 
-} // namespace osgRive
+}
