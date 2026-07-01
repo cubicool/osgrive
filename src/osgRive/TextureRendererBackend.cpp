@@ -58,79 +58,6 @@ std::vector<uint8_t> readBinaryFile(const std::string& path)
             std::istreambuf_iterator<char>()};
 }
 
-#ifdef OSGRIVE_USE_SCOPED_GL_RESTORE
-class ScopedGLRestore
-{
-public:
-    ScopedGLRestore()
-    {
-        // glGetIntegerv(GL_CURRENT_PROGRAM, &m_program);
-        glGetIntegerv(GL_ACTIVE_TEXTURE, &m_activeTexture);
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &m_texture2D);
-        // glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &m_arrayBuffer);
-        // glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &m_elementArrayBuffer);
-        // glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &m_vertexArray);
-        // glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &m_drawFramebuffer);
-        // glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &m_readFramebuffer);
-        glGetIntegerv(GL_VIEWPORT, m_viewport);
-        // m_blend = glIsEnabled(GL_BLEND);
-        // m_depthTest = glIsEnabled(GL_DEPTH_TEST);
-        m_cullFace = glIsEnabled(GL_CULL_FACE);
-        m_scissorTest = glIsEnabled(GL_SCISSOR_TEST);
-    }
-
-    ~ScopedGLRestore()
-    {
-        // restoreEnable(GL_BLEND, m_blend);
-        // restoreEnable(GL_DEPTH_TEST, m_depthTest);
-        restoreEnable(GL_CULL_FACE, m_cullFace);
-        restoreEnable(GL_SCISSOR_TEST, m_scissorTest);
-        // glUseProgram(static_cast<GLuint>(m_program));
-        glActiveTexture(static_cast<GLenum>(m_activeTexture));
-        glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(m_texture2D));
-        // glBindBuffer(GL_ARRAY_BUFFER, static_cast<GLuint>(m_arrayBuffer));
-        // glBindVertexArray(static_cast<GLuint>(m_vertexArray));
-        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLuint>(m_elementArrayBuffer));
-        // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, static_cast<GLuint>(m_drawFramebuffer));
-        // glBindFramebuffer(GL_READ_FRAMEBUFFER, static_cast<GLuint>(m_readFramebuffer));
-        glViewport(m_viewport[0], m_viewport[1], m_viewport[2], m_viewport[3]);
-    }
-
-private:
-    static void restoreEnable(GLenum cap, GLboolean enabled)
-    {
-        if (enabled)
-        {
-            glEnable(cap);
-        }
-        else
-        {
-            glDisable(cap);
-        }
-    }
-
-    GLint m_program = 0;
-    GLint m_activeTexture = GL_TEXTURE0;
-    GLint m_texture2D = 0;
-    GLint m_arrayBuffer = 0;
-    GLint m_elementArrayBuffer = 0;
-    GLint m_vertexArray = 0;
-    GLint m_drawFramebuffer = 0;
-    GLint m_readFramebuffer = 0;
-    GLint m_viewport[4] = {0, 0, 0, 0};
-    GLboolean m_blend = GL_FALSE;
-    GLboolean m_depthTest = GL_FALSE;
-    GLboolean m_cullFace = GL_FALSE;
-    GLboolean m_scissorTest = GL_FALSE;
-};
-#else
-class ScopedGLRestore
-{
-public:
-    ScopedGLRestore() = default;
-};
-#endif
-
 #ifdef OSGRIVE_DEBUG_GL_ERRORS
 void drainGLErrors(const char* label)
 {
@@ -170,7 +97,6 @@ public:
                          DrawMode drawMode)
     {
         ensureRiveGLLoaded();
-        ScopedGLRestore restoreGL;
         ensureInitialized();
 
         if (!m_textureTarget)

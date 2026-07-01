@@ -5,7 +5,6 @@ project(osgRive)
 set(RIVE_RUNTIME_DIR "/home/cubicool/dev/rive-runtime" CACHE PATH "Rive runtime checkout")
 set(RIVE_BUILD_DIR "${RIVE_RUNTIME_DIR}/tests/out/debug" CACHE PATH "Built Rive debug output directory")
 option(OSGRIVE_DEBUG_GL_ERRORS "Drain and print GL errors around Rive backend renders" OFF)
-option(OSGRIVE_USE_SCOPED_GL_RESTORE "Restore host GL state around Rive backend renders" ON)
 option(OSGRIVE_ENABLE_OSGDEBUG_TRACE "Annotate osgRive draws with osgDebug GL debug groups/messages" OFF)
 set(OSGDEBUG_DIR "/home/cubicool/dev/osgdebug" CACHE PATH "osgDebug checkout")
 
@@ -63,10 +62,6 @@ target_compile_definitions(osgRive PRIVATE
 
 if(OSGRIVE_DEBUG_GL_ERRORS)
 	target_compile_definitions(osgRive PRIVATE OSGRIVE_DEBUG_GL_ERRORS)
-endif()
-
-if(OSGRIVE_USE_SCOPED_GL_RESTORE)
-	target_compile_definitions(osgRive PRIVATE OSGRIVE_USE_SCOPED_GL_RESTORE)
 endif()
 
 if(OSGRIVE_ENABLE_OSGDEBUG_TRACE)

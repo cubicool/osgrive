@@ -1,6 +1,6 @@
 #include <osgRive/Scene>
 
-#include <osg/Group>
+#include <osg/MatrixTransform>
 #include <osgGA/TrackballManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -31,7 +31,13 @@ int main(int argc, char** argv)
     osg::ref_ptr<osgRive::Scene> riveScene =
         new osgRive::Scene(rivPath, kRiveTextureWidth, kRiveTextureHeight);
 
-    osg::ref_ptr<osg::Group> root = new osg::Group;
+    // The display quad is built flat in the XY plane (normal +Z, quad "up"
+    // along +Y). OSG's default trackball home view is set up for a Z-up
+    // world, so without this the quad starts out edge-on to the camera
+    // instead of facing it. Rotate +90 degrees about X to stand it upright,
+    // facing the camera, with the quad's +Y ("up") mapped to world +Z.
+    osg::ref_ptr<osg::MatrixTransform> root = new osg::MatrixTransform;
+    root->setMatrix(osg::Matrix::rotate(osg::PI_2, osg::Vec3(1.0, 0.0, 0.0)));
     root->addChild(riveScene.get());
 
     osgViewer::Viewer viewer;
