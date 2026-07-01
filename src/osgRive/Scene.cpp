@@ -86,8 +86,10 @@ osg::ref_ptr<osg::Geometry> makeDisplayQuad(osg::Texture2D* texture)
     stateSet->addUniform(new osg::Uniform("colorTex", 0));
     stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     stateSet->setMode(GL_BLEND, osg::StateAttribute::ON);
+    // Rive's renderer writes premultiplied color into the texture, so use
+    // premultiplied alpha blending when compositing that texture in OSG.
     stateSet->setAttributeAndModes(
-        new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+        new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
     stateSet->setAttributeAndModes(new osg::ColorMask(true, true, true, true));
     stateSet->setRenderBinDetails(1, "RenderBin");
 

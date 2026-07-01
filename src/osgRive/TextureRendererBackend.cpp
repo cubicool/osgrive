@@ -47,26 +47,6 @@ void ensureRiveGLLoaded()
     loaded = true;
 }
 
-void drainGLErrors(const char* label)
-{
-    bool printedHeader = false;
-    for (;;)
-    {
-        GLenum err = glGetError();
-        if (err == GL_NO_ERROR)
-        {
-            return;
-        }
-
-        if (!printedHeader)
-        {
-            std::fprintf(stderr, "Rive GL errors drained at %s:\n", label);
-            printedHeader = true;
-        }
-        std::fprintf(stderr, "  0x%04x\n", static_cast<unsigned int>(err));
-    }
-}
-
 std::vector<uint8_t> readBinaryFile(const std::string& path)
 {
     std::ifstream stream(path, std::ios::binary);
@@ -78,43 +58,41 @@ std::vector<uint8_t> readBinaryFile(const std::string& path)
             std::istreambuf_iterator<char>()};
 }
 
+#ifdef OSGRIVE_USE_SCOPED_GL_RESTORE
 class ScopedGLRestore
 {
 public:
     ScopedGLRestore()
     {
-        glGetIntegerv(GL_CURRENT_PROGRAM, &m_program);
+        // glGetIntegerv(GL_CURRENT_PROGRAM, &m_program);
         glGetIntegerv(GL_ACTIVE_TEXTURE, &m_activeTexture);
         glGetIntegerv(GL_TEXTURE_BINDING_2D, &m_texture2D);
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &m_arrayBuffer);
-        glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &m_elementArrayBuffer);
-        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &m_vertexArray);
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &m_drawFramebuffer);
-        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &m_readFramebuffer);
+        // glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &m_arrayBuffer);
+        // glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &m_elementArrayBuffer);
+        // glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &m_vertexArray);
+        // glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &m_drawFramebuffer);
+        // glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &m_readFramebuffer);
         glGetIntegerv(GL_VIEWPORT, m_viewport);
-        m_blend = glIsEnabled(GL_BLEND);
-        m_depthTest = glIsEnabled(GL_DEPTH_TEST);
+        // m_blend = glIsEnabled(GL_BLEND);
+        // m_depthTest = glIsEnabled(GL_DEPTH_TEST);
         m_cullFace = glIsEnabled(GL_CULL_FACE);
         m_scissorTest = glIsEnabled(GL_SCISSOR_TEST);
     }
 
     ~ScopedGLRestore()
     {
-        restoreEnable(GL_BLEND, m_blend);
-        restoreEnable(GL_DEPTH_TEST, m_depthTest);
+        // restoreEnable(GL_BLEND, m_blend);
+        // restoreEnable(GL_DEPTH_TEST, m_depthTest);
         restoreEnable(GL_CULL_FACE, m_cullFace);
         restoreEnable(GL_SCISSOR_TEST, m_scissorTest);
-        glUseProgram(static_cast<GLuint>(m_program));
+        // glUseProgram(static_cast<GLuint>(m_program));
         glActiveTexture(static_cast<GLenum>(m_activeTexture));
         glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(m_texture2D));
-        glBindBuffer(GL_ARRAY_BUFFER, static_cast<GLuint>(m_arrayBuffer));
-        glBindVertexArray(static_cast<GLuint>(m_vertexArray));
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                     static_cast<GLuint>(m_elementArrayBuffer));
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                          static_cast<GLuint>(m_drawFramebuffer));
-        glBindFramebuffer(GL_READ_FRAMEBUFFER,
-                          static_cast<GLuint>(m_readFramebuffer));
+        // glBindBuffer(GL_ARRAY_BUFFER, static_cast<GLuint>(m_arrayBuffer));
+        // glBindVertexArray(static_cast<GLuint>(m_vertexArray));
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLuint>(m_elementArrayBuffer));
+        // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, static_cast<GLuint>(m_drawFramebuffer));
+        // glBindFramebuffer(GL_READ_FRAMEBUFFER, static_cast<GLuint>(m_readFramebuffer));
         glViewport(m_viewport[0], m_viewport[1], m_viewport[2], m_viewport[3]);
     }
 
@@ -145,6 +123,35 @@ private:
     GLboolean m_cullFace = GL_FALSE;
     GLboolean m_scissorTest = GL_FALSE;
 };
+#else
+class ScopedGLRestore
+{
+public:
+    ScopedGLRestore() = default;
+};
+#endif
+
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
+void drainGLErrors(const char* label)
+{
+    bool printedHeader = false;
+    for (;;)
+    {
+        GLenum err = glGetError();
+        if (err == GL_NO_ERROR)
+        {
+            return;
+        }
+
+        if (!printedHeader)
+        {
+            std::fprintf(stderr, "Rive GL errors drained at %s:\n", label);
+            printedHeader = true;
+        }
+        std::fprintf(stderr, "  0x%04x\n", static_cast<unsigned int>(err));
+    }
+}
+#endif
 
 } // namespace
 
@@ -188,7 +195,9 @@ private:
                         rive::gpu::LoadAction loadAction,
                         uint32_t clearColor)
     {
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
         drainGLErrors("before Rive render");
+#endif
 
         auto* glImpl =
             m_renderContext
@@ -250,7 +259,9 @@ private:
 
         glImpl->unbindGLInternalResources();
 
+#ifdef OSGRIVE_DEBUG_GL_ERRORS
         drainGLErrors("after Rive render");
+#endif
     }
 
     void ensureInitialized()
