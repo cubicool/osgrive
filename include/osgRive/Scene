@@ -2,11 +2,10 @@
 
 #include <osgRive/Export>
 
-#include <osg/BoundingBox>
-#include <osg/Drawable>
+#include <osg/Geode>
+#include <osg/Group>
 #include <osg/Texture2D>
 
-#include <memory>
 #include <string>
 
 namespace osgRive
@@ -20,33 +19,12 @@ enum class DrawMode
     NONE
 };
 
-// Renders one Rive .riv scene/artboard into an owned GL_RGBA8 texture, every
-// frame, as a real osg::Drawable participating in normal OSG traversal (no
-// osg::Camera::DrawCallback, no manual GL state resets). Place this alongside
-// a texture-sampling drawable (e.g. a textured quad) that reads getTexture().
-//
-// Must be added to the scene graph via an osg::Geode (geode->addDrawable(...)),
-// not directly as a osg::Group child -- osg::Drawable does not override
-// accept(NodeVisitor&) itself, so a bare Drawable child is never recognized
-// by CullVisitor as drawable content; osg::Geode is what correctly dispatches
-// its contained Drawables during cull/draw.
-//
-// Callers MUST ensure this Drawable's RenderBin sorts before any Drawable
-// sampling its texture, e.g.:
-//
-//   scene->getOrCreateStateSet()->setRenderBinDetails(0, "RenderBin");
-//   quad->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
-//
-// Callers MUST also declare an osg::ColorMask(true,true,true,true) attribute
-// on the StateSet of whatever draws after this Scene. Rive's own internal
-// GLState class tracks glColorMask/glDepthMask/glStencilMask separately from
-// anything this Scene or OSG restores, and may leave color writes disabled
-// after its last internal render pass for the frame. OSG only re-applies
-// write masks per-leaf when a StateSet explicitly declares that attribute --
-// without it, nothing resets color writes before the next Drawable runs.
-//
-// See examples/osgrive_example_quad.cpp.
-class OSGRIVE_EXPORT Scene : public osg::Drawable
+// A directly addable OSG node that renders one Rive .riv scene/artboard into
+// an owned GL_RGBA8 texture and displays it on a default unit quad. The
+// internal producer drawable, producer geode, textured display geometry,
+// render-bin ordering, blend state, and ColorMask repair are owned here so
+// callers can treat this like ordinary visible OSG content.
+class OSGRIVE_EXPORT Scene : public osg::Group
 {
 public:
     Scene();
@@ -59,27 +37,27 @@ public:
     DrawMode getDrawMode() const;
 
     // The texture Rive renders into. Valid immediately after construction;
-    // contents become live after the first successful draw. Sample this from
-    // a separate StateSet (this class does not draw any visible geometry of
-    // its own).
+    // contents become live after the first successful draw.
     osg::Texture2D* getTexture();
     const osg::Texture2D* getTexture() const;
 
-    void drawImplementation(osg::RenderInfo& renderInfo) const override;
-    osg::BoundingBox computeBoundingBox() const override;
+    osg::Geode* getDisplayGeode();
+    const osg::Geode* getDisplayGeode() const;
 
 protected:
     ~Scene() override;
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> m_impl;
-    osg::ref_ptr<osg::Texture2D> m_texture;
+    class RenderDrawable;
+
+    void init(const std::string& rivPath, unsigned int width, unsigned int height);
+
+    osg::ref_ptr<RenderDrawable> m_renderDrawable;
+    osg::ref_ptr<osg::Geode> m_displayGeode;
     std::string m_rivPath;
     unsigned int m_width = 0;
     unsigned int m_height = 0;
     DrawMode m_drawMode = DrawMode::SCENE;
-    mutable double m_lastSimTime = -1.0;
 };
 
 } // namespace osgRive
