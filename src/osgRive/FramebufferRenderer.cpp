@@ -20,8 +20,13 @@ public:
 	Impl(std::string rivPath, uint32_t width, uint32_t height):
 	m_renderer(std::move(rivPath), width, height) {}
 
+	Impl(DrawFunction draw, uint32_t width, uint32_t height):
+	m_renderer(std::move(draw), width, height) {}
+
 	uint32_t width() const { return m_renderer.width(); }
 	uint32_t height() const { return m_renderer.height(); }
+
+	void setTransform(std::optional<Affine> transform) { m_renderer.setTransform(transform); }
 
 	void render(osg::RenderInfo& renderInfo, float elapsedSeconds, DrawMode drawMode) {
 		osg::State* state = renderInfo.getState();
@@ -70,10 +75,15 @@ private:
 FramebufferRenderer::FramebufferRenderer(std::string rivPath, uint32_t width, uint32_t height):
 m_impl(std::make_unique<Impl>(std::move(rivPath), width, height)) {}
 
+FramebufferRenderer::FramebufferRenderer(DrawFunction draw, uint32_t width, uint32_t height):
+m_impl(std::make_unique<Impl>(std::move(draw), width, height)) {}
+
 FramebufferRenderer::~FramebufferRenderer() = default;
 
 uint32_t FramebufferRenderer::width() const { return m_impl->width(); }
 uint32_t FramebufferRenderer::height() const { return m_impl->height(); }
+
+void FramebufferRenderer::setTransform(std::optional<Affine> transform) { m_impl->setTransform(transform); }
 
 void FramebufferRenderer::render(
 	osg::RenderInfo& renderInfo,

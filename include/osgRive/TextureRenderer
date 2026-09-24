@@ -3,12 +3,19 @@
 #include <osgRive/Export>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace osg {
 	class RenderInfo;
 	class Texture2D;
+}
+
+namespace rive {
+	class Factory;
+	class Renderer;
 }
 
 namespace osgRive {
@@ -20,9 +27,33 @@ enum class DrawMode {
 	NONE
 };
 
+// A 2D affine transform in rive::Mat2D's layout: a point (x, y) maps to
+// (xAxisX * x + yAxisX * y + tx, xAxisY * x + yAxisY * y + ty). The default is identity.
+struct Affine {
+	float xAxisX = 1.0f;
+	float xAxisY = 0.0f;
+	float yAxisX = 0.0f;
+	float yAxisY = 1.0f;
+	float tx = 0.0f;
+	float ty = 0.0f;
+};
+
+// Custom content, drawn in place of a .riv scene: called once per frame with Rive's render context
+// (a rive::Factory - decodeFont(), makeRenderPath(), makeRenderPaint(), ...) and a renderer whose
+// coordinate space is the target's own pixels (origin top-left, y down). No fit/alignment
+// transform is applied, and DrawMode is ignored except for DrawMode::NONE. The rive types are only
+// forward-declared here: code that implements a DrawFunction must be compiled with Rive's own
+// include paths and definitions (see makeTextDraw() in <osgRive/Text> for one that is).
+using DrawFunction = std::function<void(
+	rive::Factory& factory,
+	rive::Renderer& renderer,
+	float elapsedSeconds
+)>;
+
 class OSGRIVE_EXPORT TextureRenderer {
 public:
 	TextureRenderer(std::string rivPath, uint32_t width, uint32_t height);
+	TextureRenderer(DrawFunction draw, uint32_t width, uint32_t height);
 	~TextureRenderer();
 
 	TextureRenderer(const TextureRenderer&) = delete;
@@ -30,6 +61,12 @@ public:
 
 	uint32_t width() const;
 	uint32_t height() const;
+
+	// .riv content only: artboard coordinates -> target pixels. Set, it replaces the default
+	// Fit::contain/Alignment::center fit, so the caller decides the artboard's on-target size every
+	// frame (Rive tessellates for whatever size it implies). std::nullopt restores the default fit.
+	// Ignored for DrawFunction content, which applies its own transforms.
+	void setTransform(std::optional<Affine> transform);
 
 	void render(
 		osg::RenderInfo& renderInfo,

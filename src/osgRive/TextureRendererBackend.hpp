@@ -11,6 +11,7 @@ namespace osgRive {
 class TextureRendererBackend {
 public:
 	TextureRendererBackend(std::string rivPath, uint32_t width, uint32_t height);
+	TextureRendererBackend(DrawFunction draw, uint32_t width, uint32_t height);
 	~TextureRendererBackend();
 
 	TextureRendererBackend(const TextureRendererBackend&) = delete;
@@ -18,6 +19,8 @@ public:
 
 	uint32_t width() const;
 	uint32_t height() const;
+
+	void setTransform(std::optional<Affine> transform);
 
 	void renderToTexture(uint32_t textureID, float elapsedSeconds, DrawMode drawMode);
 

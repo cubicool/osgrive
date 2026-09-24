@@ -25,11 +25,21 @@ find_package(OpenSceneGraph REQUIRED
 # via osgRive::Scene, an osg::Group that owns its producer drawable and display
 # geometry (see include/osgRive/Scene).
 add_library(osgRive
+	src/osgRive/Artboard.cpp
 	src/osgRive/Scene.cpp
+	src/osgRive/Text.cpp
 	src/osgRive/TextureRenderer.cpp
 	src/osgRive/TextureRendererBackend.cpp
 	src/osgRive/FramebufferRenderer.cpp
 	src/osgRive/FramebufferRendererBackend.cpp
+	# rive::NoOpFactory (readArtboardBounds()) - not part of any built Rive archive.
+	${RIVE_RUNTIME_DIR}/utils/no_op_factory.cpp
+)
+
+# Defines subclasses of Rive's polymorphic render types; Rive's archives are built -fno-rtti, so
+# with RTTI on this file would reference typeinfo for bases that don't exist anywhere.
+set_source_files_properties(${RIVE_RUNTIME_DIR}/utils/no_op_factory.cpp
+	PROPERTIES COMPILE_OPTIONS "-fno-rtti"
 )
 
 target_compile_features(osgRive PUBLIC cxx_std_20)
@@ -110,6 +120,20 @@ add_executable(osgrive-example-quad
 	examples/osgrive_example_quad.cpp
 )
 target_link_libraries(osgrive-example-quad PRIVATE osgRive)
+
+# Text through Rive's own font stack (osgRive::makeTextDraw()), no .riv file; --framebuffer draws
+# it screen-space at true output resolution.
+add_executable(osgrive-example-text
+	examples/osgrive_example_text.cpp
+)
+target_link_libraries(osgrive-example-text PRIVATE osgRive)
+
+# A .riv artboard in a 3D world, drawn by Rive at window resolution through the camera every frame
+# (Scene::setTransform()) instead of as a fixed texture on a quad.
+add_executable(osgrive-example-screen
+	examples/osgrive_example_screen.cpp
+)
+target_link_libraries(osgrive-example-screen PRIVATE osgRive)
 
 # Reference implementation predating the osgRive library: does everything by
 # hand (raw GL state resets around a Camera::DrawCallback) instead of using

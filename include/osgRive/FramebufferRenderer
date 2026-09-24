@@ -21,6 +21,7 @@ namespace osgRive {
 class OSGRIVE_EXPORT FramebufferRenderer {
 public:
 	FramebufferRenderer(std::string rivPath, uint32_t width, uint32_t height);
+	FramebufferRenderer(DrawFunction draw, uint32_t width, uint32_t height);
 	~FramebufferRenderer();
 
 	FramebufferRenderer(const FramebufferRenderer&) = delete;
@@ -28,6 +29,9 @@ public:
 
 	uint32_t width() const;
 	uint32_t height() const;
+
+	// See TextureRenderer::setTransform().
+	void setTransform(std::optional<Affine> transform);
 
 	void render(osg::RenderInfo& renderInfo, float elapsedSeconds, DrawMode drawMode);
 

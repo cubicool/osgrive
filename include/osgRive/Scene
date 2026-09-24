@@ -45,6 +45,13 @@ public:
 		unsigned int height,
 		RenderTarget renderTarget=RenderTarget::TEXTURE
 	);
+	// Custom content instead of a .riv file - see DrawFunction in <osgRive/TextureRenderer>.
+	Scene(
+		DrawFunction draw,
+		unsigned int width,
+		unsigned int height,
+		RenderTarget renderTarget=RenderTarget::TEXTURE
+	);
 	Scene(const Scene& scene, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
 
 	META_Object(osgRive, Scene)
@@ -53,6 +60,11 @@ public:
 	DrawMode getDrawMode() const;
 
 	RenderTarget getRenderTarget() const;
+
+	// .riv content only: artboard coordinates -> target pixels, replacing the default fit (see
+	// TextureRenderer::setTransform()). May be changed every frame, e.g. from a cull callback.
+	void setTransform(const Affine& transform);
+	void clearTransform();
 
 	// The texture Rive renders into. Valid immediately after construction in RenderTarget::TEXTURE
 	// mode; contents become live after the first successful draw. Always null in
@@ -72,12 +84,13 @@ private:
 	class TextureRenderDrawable;
 	class FramebufferRenderDrawable;
 
-	void init(const std::string& rivPath, unsigned int width, unsigned int height);
+	void init();
 
 	osg::ref_ptr<TextureRenderDrawable> m_renderDrawable;
 	osg::ref_ptr<FramebufferRenderDrawable> m_framebufferDrawable;
 	osg::ref_ptr<osg::Geode> m_displayGeode;
 	std::string m_rivPath;
+	DrawFunction m_draw;
 	unsigned int m_width = 0;
 	unsigned int m_height = 0;
 	DrawMode m_drawMode = DrawMode::SCENE;

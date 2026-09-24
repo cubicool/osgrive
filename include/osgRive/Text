@@ -1,0 +1,58 @@
+#pragma once
+
+#include <osgRive/Export>
+#include <osgRive/TextureRenderer>
+
+#include <cstdint>
+#include <memory>
+#include <string>
+
+namespace osgRive {
+
+// One line of text drawn through Rive's own font stack: HarfBuzz shaping (rive::Font::shapeText())
+// and unhinted HarfBuzz glyph outlines (rive::Font::getPath()), filled (nonzero) by Rive's renderer.
+//
+// The text is shaped ONCE, in em units: the first glyph's baseline origin at (0, 0), y down (Rive's
+// convention). Every draw maps that em-space path into target pixels (origin top-left, y down)
+// through the current transform, so Rive re-tessellates for whatever size the transform implies -
+// the path itself never changes. Font decoding and shaping happen on the first draw.
+//
+// setTransform()/setVisible() may be called between frames; every DrawFunction returned by
+// drawFunction() shares this object's state. Not thread-safe against a concurrent draw (osgRive
+// requires osgViewer's SingleThreaded model anyway).
+class OSGRIVE_EXPORT TextDraw {
+public:
+	// `color` is 0xAARRGGBB. Throws std::runtime_error if `fontPath` can't be read.
+	TextDraw(const std::string& fontPath, const std::string& text, uint32_t color=0xFFFFFFFF);
+	~TextDraw();
+
+	void setTransform(const Affine& transform);
+	Affine getTransform() const;
+
+	// false skips drawing entirely (e.g. the text is behind the camera).
+	void setVisible(bool visible);
+	bool getVisible() const;
+
+	DrawFunction drawFunction() const;
+
+private:
+	struct State;
+
+	// Decodes the font, shapes the text, and builds the RenderPath; runs on the first draw.
+	static void build(State& state, rive::Factory& factory);
+
+	std::shared_ptr<State> m_state;
+};
+
+// Convenience: a fixed transform of uniform scale `pixelsPerEm` with the first glyph's baseline
+// origin at (originX, originY) target pixels.
+OSGRIVE_EXPORT DrawFunction makeTextDraw(
+	const std::string& fontPath,
+	const std::string& text,
+	float pixelsPerEm,
+	float originX,
+	float originY,
+	uint32_t color=0xFFFFFFFF
+);
+
+}

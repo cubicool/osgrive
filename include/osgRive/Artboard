@@ -1,0 +1,25 @@
+#pragma once
+
+#include <osgRive/Export>
+
+#include <string>
+
+namespace osgRive {
+
+// The default artboard's bounds in artboard coordinates (y down), as Rive reports them.
+struct ArtboardBounds {
+	float minX = 0.0f;
+	float minY = 0.0f;
+	float maxX = 0.0f;
+	float maxY = 0.0f;
+
+	float width() const { return maxX - minX; }
+	float height() const { return maxY - minY; }
+};
+
+// Reads the default artboard's bounds from a .riv file without a GL context (imports it through
+// Rive's NoOpFactory), so a caller can place/frame the artboard before anything renders. Throws
+// std::runtime_error if the file can't be read or imported, or has no default artboard.
+OSGRIVE_EXPORT ArtboardBounds readArtboardBounds(const std::string& rivPath);
+
+}

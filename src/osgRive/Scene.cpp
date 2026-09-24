@@ -106,12 +106,15 @@ class Scene::TextureRenderDrawable : public osg::Drawable {
 public:
 	TextureRenderDrawable() = default;
 	TextureRenderDrawable(const std::string& rivPath, unsigned int width, unsigned int height);
+	TextureRenderDrawable(DrawFunction draw, unsigned int width, unsigned int height);
 	TextureRenderDrawable(const TextureRenderDrawable& drawable, const osg::CopyOp& co=osg::CopyOp::SHALLOW_COPY);
 
 	META_Object(osgRive, TextureRenderDrawable)
 
 	void setDrawMode(DrawMode mode);
 	DrawMode getDrawMode() const;
+
+	void setTransform(std::optional<Affine> transform);
 
 	osg::Texture2D* getTexture();
 	const osg::Texture2D* getTexture() const;
@@ -128,12 +131,18 @@ private:
 		Impl(std::string rivPath, unsigned int width, unsigned int height):
 		m_renderer(std::move(rivPath), width, height) {}
 
+		Impl(DrawFunction draw, unsigned int width, unsigned int height):
+		m_renderer(std::move(draw), width, height) {}
+
 		TextureRenderer m_renderer;
 	};
+
+	void makeImpl();
 
 	std::unique_ptr<Impl> m_impl;
 	osg::ref_ptr<osg::Texture2D> m_texture;
 	std::string m_rivPath;
+	DrawFunction m_draw;
 	unsigned int m_width = 0;
 	unsigned int m_height = 0;
 	DrawMode m_drawMode = DrawMode::SCENE;
@@ -151,6 +160,7 @@ class Scene::FramebufferRenderDrawable: public osg::Drawable {
 public:
 	FramebufferRenderDrawable() = default;
 	FramebufferRenderDrawable(const std::string& rivPath, unsigned int width, unsigned int height);
+	FramebufferRenderDrawable(DrawFunction draw, unsigned int width, unsigned int height);
 	FramebufferRenderDrawable(
 		const FramebufferRenderDrawable& drawable,
 		const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY
@@ -160,6 +170,8 @@ public:
 
 	void setDrawMode(DrawMode mode);
 	DrawMode getDrawMode() const;
+
+	void setTransform(std::optional<Affine> transform);
 
 	void drawImplementation(osg::RenderInfo& renderInfo) const override;
 	osg::BoundingBox computeBoundingBox() const override;
@@ -173,11 +185,17 @@ private:
 		Impl(std::string rivPath, unsigned int width, unsigned int height):
 		m_renderer(std::move(rivPath), width, height) {}
 
+		Impl(DrawFunction draw, unsigned int width, unsigned int height):
+		m_renderer(std::move(draw), width, height) {}
+
 		FramebufferRenderer m_renderer;
 	};
 
+	void makeImpl();
+
 	std::unique_ptr<Impl> m_impl;
 	std::string m_rivPath;
+	DrawFunction m_draw;
 	unsigned int m_width = 0;
 	unsigned int m_height = 0;
 	DrawMode m_drawMode = DrawMode::SCENE;
@@ -196,20 +214,34 @@ m_rivPath(rivPath),
 m_width(width),
 m_height(height),
 m_renderTarget(renderTarget) {
-	init(rivPath, width, height);
+	init();
+}
+
+Scene::Scene(
+	DrawFunction draw,
+	unsigned int width,
+	unsigned int height,
+	RenderTarget renderTarget
+):
+m_draw(std::move(draw)),
+m_width(width),
+m_height(height),
+m_renderTarget(renderTarget) {
+	init();
 }
 
 Scene::Scene(const Scene& scene, const osg::CopyOp& copyop):
 osg::Group(scene, copyop),
 m_rivPath(scene.m_rivPath),
+m_draw(scene.m_draw),
 m_width(scene.m_width),
 m_height(scene.m_height),
 m_drawMode(scene.m_drawMode),
 m_renderTarget(scene.m_renderTarget) {
 	removeChildren(0, getNumChildren());
 
-	if(!m_rivPath.empty()) {
-		init(m_rivPath, m_width, m_height);
+	if(!m_rivPath.empty() || m_draw) {
+		init();
 		setDrawMode(m_drawMode);
 	}
 }
@@ -228,6 +260,18 @@ DrawMode Scene::getDrawMode() const { return m_drawMode; }
 
 RenderTarget Scene::getRenderTarget() const { return m_renderTarget; }
 
+void Scene::setTransform(const Affine& transform) {
+	if(m_renderDrawable) m_renderDrawable->setTransform(transform);
+
+	if(m_framebufferDrawable) m_framebufferDrawable->setTransform(transform);
+}
+
+void Scene::clearTransform() {
+	if(m_renderDrawable) m_renderDrawable->setTransform(std::nullopt);
+
+	if(m_framebufferDrawable) m_framebufferDrawable->setTransform(std::nullopt);
+}
+
 osg::Texture2D* Scene::getTexture() {
 	return m_renderDrawable ? m_renderDrawable->getTexture() : nullptr;
 }
@@ -240,9 +284,13 @@ osg::Geode* Scene::getDisplayGeode() { return m_displayGeode.get(); }
 
 const osg::Geode* Scene::getDisplayGeode() const { return m_displayGeode.get(); }
 
-void Scene::init(const std::string& rivPath, unsigned int width, unsigned int height) {
+void Scene::init() {
 	if(m_renderTarget == RenderTarget::FRAMEBUFFER) {
-		m_framebufferDrawable = new FramebufferRenderDrawable(rivPath, width, height);
+		m_framebufferDrawable = m_draw
+			? new FramebufferRenderDrawable(m_draw, m_width, m_height)
+			: new FramebufferRenderDrawable(m_rivPath, m_width, m_height)
+		;
+
 		m_framebufferDrawable->setDrawMode(m_drawMode);
 		// A high bin number so this draws after any other content the
 		// caller's scene graph contributes this frame (default OSG content
@@ -263,7 +311,10 @@ void Scene::init(const std::string& rivPath, unsigned int width, unsigned int he
 		return;
 	}
 
-	m_renderDrawable = new TextureRenderDrawable(rivPath, width, height);
+	m_renderDrawable = m_draw
+		? new TextureRenderDrawable(m_draw, m_width, m_height)
+		: new TextureRenderDrawable(m_rivPath, m_width, m_height)
+	;
 
 	m_renderDrawable->setDrawMode(m_drawMode);
 	m_renderDrawable->getOrCreateStateSet()->setRenderBinDetails(0, "RenderBin");
@@ -296,12 +347,38 @@ m_height(height) {
 	setUseVertexBufferObjects(false);
 
 	m_texture = makeRiveTexture(width, height);
-	m_impl = std::make_unique<Impl>(rivPath, width, height);
+
+	makeImpl();
+}
+
+Scene::TextureRenderDrawable::TextureRenderDrawable(
+	DrawFunction draw,
+	unsigned int width,
+	unsigned int height
+):
+m_draw(std::move(draw)),
+m_width(width),
+m_height(height) {
+	setCullingActive(false);
+	setUseDisplayList(false);
+	setUseVertexBufferObjects(false);
+
+	m_texture = makeRiveTexture(width, height);
+
+	makeImpl();
+}
+
+void Scene::TextureRenderDrawable::makeImpl() {
+	m_impl = m_draw
+		? std::make_unique<Impl>(m_draw, m_width, m_height)
+		: std::make_unique<Impl>(m_rivPath, m_width, m_height)
+	;
 }
 
 Scene::TextureRenderDrawable::TextureRenderDrawable(const TextureRenderDrawable& drawable, const osg::CopyOp& copyop):
 osg::Drawable(drawable, copyop),
 m_rivPath(drawable.m_rivPath),
+m_draw(drawable.m_draw),
 m_width(drawable.m_width),
 m_height(drawable.m_height),
 m_drawMode(drawable.m_drawMode) {
@@ -314,9 +391,10 @@ m_drawMode(drawable.m_drawMode) {
 	// meaningfully duplicated. A "copy" of a Scene is a fresh, independent
 	// instance configured the same way (same .riv path/dimensions/draw
 	// mode), not a shared or cloned Rive renderer.
-	if(!m_rivPath.empty()) {
+	if(!m_rivPath.empty() || m_draw) {
 		m_texture = makeRiveTexture(m_width, m_height);
-		m_impl = std::make_unique<Impl>(m_rivPath, m_width, m_height);
+
+		makeImpl();
 	}
 }
 
@@ -325,6 +403,10 @@ Scene::TextureRenderDrawable::~TextureRenderDrawable() = default;
 void Scene::TextureRenderDrawable::setDrawMode(DrawMode mode) { m_drawMode = mode; }
 
 DrawMode Scene::TextureRenderDrawable::getDrawMode() const { return m_drawMode; }
+
+void Scene::TextureRenderDrawable::setTransform(std::optional<Affine> transform) {
+	if(m_impl) m_impl->m_renderer.setTransform(transform);
+}
 
 osg::Texture2D* Scene::TextureRenderDrawable::getTexture() { return m_texture.get(); }
 
@@ -379,7 +461,29 @@ m_height(height) {
 	setUseDisplayList(false);
 	setUseVertexBufferObjects(false);
 
-	m_impl = std::make_unique<Impl>(rivPath, width, height);
+	makeImpl();
+}
+
+Scene::FramebufferRenderDrawable::FramebufferRenderDrawable(
+	DrawFunction draw,
+	unsigned int width,
+	unsigned int height
+):
+m_draw(std::move(draw)),
+m_width(width),
+m_height(height) {
+	setCullingActive(false);
+	setUseDisplayList(false);
+	setUseVertexBufferObjects(false);
+
+	makeImpl();
+}
+
+void Scene::FramebufferRenderDrawable::makeImpl() {
+	m_impl = m_draw
+		? std::make_unique<Impl>(m_draw, m_width, m_height)
+		: std::make_unique<Impl>(m_rivPath, m_width, m_height)
+	;
 }
 
 Scene::FramebufferRenderDrawable::FramebufferRenderDrawable(
@@ -388,6 +492,7 @@ Scene::FramebufferRenderDrawable::FramebufferRenderDrawable(
 ):
 osg::Drawable(drawable, copyop),
 m_rivPath(drawable.m_rivPath),
+m_draw(drawable.m_draw),
 m_width(drawable.m_width),
 m_height(drawable.m_height),
 m_drawMode(drawable.m_drawMode) {
@@ -397,7 +502,7 @@ m_drawMode(drawable.m_drawMode) {
 
 	// See RenderDrawable's copy constructor: same reasoning, not a deep copy
 	// of live Rive/GL resources.
-	if(!m_rivPath.empty()) m_impl = std::make_unique<Impl>(m_rivPath, m_width, m_height);
+	if(!m_rivPath.empty() || m_draw) makeImpl();
 }
 
 Scene::FramebufferRenderDrawable::~FramebufferRenderDrawable() = default;
@@ -405,6 +510,10 @@ Scene::FramebufferRenderDrawable::~FramebufferRenderDrawable() = default;
 void Scene::FramebufferRenderDrawable::setDrawMode(DrawMode mode) { m_drawMode = mode; }
 
 DrawMode Scene::FramebufferRenderDrawable::getDrawMode() const { return m_drawMode; }
+
+void Scene::FramebufferRenderDrawable::setTransform(std::optional<Affine> transform) {
+	if(m_impl) m_impl->m_renderer.setTransform(transform);
+}
 
 void Scene::FramebufferRenderDrawable::drawImplementation(osg::RenderInfo& renderInfo) const {
 	if(!m_impl) return;

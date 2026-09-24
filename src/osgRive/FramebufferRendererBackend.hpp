@@ -16,6 +16,7 @@ namespace osgRive {
 class FramebufferRendererBackend {
 public:
 	FramebufferRendererBackend(std::string rivPath, uint32_t width, uint32_t height);
+	FramebufferRendererBackend(DrawFunction draw, uint32_t width, uint32_t height);
 	~FramebufferRendererBackend();
 
 	FramebufferRendererBackend(const FramebufferRendererBackend&) = delete;
@@ -23,6 +24,8 @@ public:
 
 	uint32_t width() const;
 	uint32_t height() const;
+
+	void setTransform(std::optional<Affine> transform);
 
 	void renderToCurrentFramebuffer(
 		uint32_t drawFramebufferID,

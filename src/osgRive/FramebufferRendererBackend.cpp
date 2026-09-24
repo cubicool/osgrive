@@ -22,8 +22,13 @@ public:
 	Impl(std::string rivPath, uint32_t width, uint32_t height):
 	m_rivPath(std::move(rivPath)), m_width(width), m_height(height) {}
 
+	Impl(DrawFunction draw, uint32_t width, uint32_t height):
+	m_draw(std::move(draw)), m_width(width), m_height(height) {}
+
 	uint32_t width() const { return m_width; }
 	uint32_t height() const { return m_height; }
+
+	void setTransform(std::optional<Affine> transform) { m_transform = transform; }
 
 	void renderToCurrentFramebuffer(
 		uint32_t drawFramebufferID,
@@ -87,43 +92,61 @@ private:
 
 		m_renderContext->beginFrame(frameDescriptor);
 
-		if(m_scene && drawMode != DrawMode::NONE) m_scene->advanceAndApply(elapsedSeconds);
-		else if (drawMode != DrawMode::NONE) m_artboard->advance(elapsedSeconds);
-
 		rive::RiveRenderer renderer(m_renderContext.get());
 
-		renderer.save();
-		renderer.transform(rive::computeAlignment(
-			rive::Fit::contain,
-			rive::Alignment::center,
-			rive::AABB(
-				0.0f,
-				0.0f,
-				static_cast<float>(m_width),
-				static_cast<float>(m_height)
-			),
-			m_artboard->bounds())
-		);
-
-		switch(drawMode) {
-			case DrawMode::SCENE:
-				if(m_scene) m_scene->draw(&renderer);
-				else m_artboard->draw(&renderer);
-				break;
-
-			case DrawMode::ARTBOARD:
-				m_artboard->draw(&renderer);
-				break;
-
-			case DrawMode::ARTBOARD_INTERNAL:
-				m_artboard->drawInternal(&renderer);
-				break;
-
-			case DrawMode::NONE:
-				break;
+		if(m_draw) {
+			if(drawMode != DrawMode::NONE) m_draw(*m_renderContext, renderer, elapsedSeconds);
 		}
 
-		renderer.restore();
+		else {
+			if(m_scene && drawMode != DrawMode::NONE) m_scene->advanceAndApply(elapsedSeconds);
+			else if (drawMode != DrawMode::NONE) m_artboard->advance(elapsedSeconds);
+
+			renderer.save();
+
+			if(m_transform) renderer.transform(rive::Mat2D(
+				m_transform->xAxisX,
+				m_transform->xAxisY,
+				m_transform->yAxisX,
+				m_transform->yAxisY,
+				m_transform->tx,
+				m_transform->ty
+			));
+
+			else {
+				renderer.transform(rive::computeAlignment(
+					rive::Fit::contain,
+					rive::Alignment::center,
+					rive::AABB(
+						0.0f,
+						0.0f,
+						static_cast<float>(m_width),
+						static_cast<float>(m_height)
+					),
+					m_artboard->bounds())
+				);
+			}
+
+			switch(drawMode) {
+				case DrawMode::SCENE:
+					if(m_scene) m_scene->draw(&renderer);
+					else m_artboard->draw(&renderer);
+					break;
+
+				case DrawMode::ARTBOARD:
+					m_artboard->draw(&renderer);
+					break;
+
+				case DrawMode::ARTBOARD_INTERNAL:
+					m_artboard->drawInternal(&renderer);
+					break;
+
+				case DrawMode::NONE:
+					break;
+			}
+
+			renderer.restore();
+		}
 
 		m_renderContext->flush({.renderTarget = target});
 
@@ -146,6 +169,8 @@ private:
 			"required by this backend"
 		);
 
+		if(m_draw) return;
+
 		auto rivBytes = readBinaryFile(m_rivPath);
 
 		m_file = rive::File::import(rivBytes, m_renderContext.get());
@@ -165,6 +190,8 @@ private:
 	}
 
 	std::string m_rivPath;
+	DrawFunction m_draw;
+	std::optional<Affine> m_transform;
 	uint32_t m_width = 0;
 	uint32_t m_height = 0;
 
@@ -183,10 +210,15 @@ FramebufferRendererBackend::FramebufferRendererBackend(
 ):
 m_impl(std::make_unique<Impl>(std::move(rivPath), width, height)) {}
 
+FramebufferRendererBackend::FramebufferRendererBackend(DrawFunction draw, uint32_t width, uint32_t height):
+m_impl(std::make_unique<Impl>(std::move(draw), width, height)) {}
+
 FramebufferRendererBackend::~FramebufferRendererBackend() = default;
 
 uint32_t FramebufferRendererBackend::width() const { return m_impl->width(); }
 uint32_t FramebufferRendererBackend::height() const { return m_impl->height(); }
+
+void FramebufferRendererBackend::setTransform(std::optional<Affine> transform) { m_impl->setTransform(transform); }
 
 void FramebufferRendererBackend::renderToCurrentFramebuffer(
 	uint32_t drawFramebufferID,

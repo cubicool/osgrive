@@ -20,8 +20,13 @@ public:
 	Impl(std::string rivPath, uint32_t width, uint32_t height):
 	m_renderer(std::move(rivPath), width, height) {}
 
+	Impl(DrawFunction draw, uint32_t width, uint32_t height):
+	m_renderer(std::move(draw), width, height) {}
+
 	uint32_t width() const { return m_renderer.width(); }
 	uint32_t height() const { return m_renderer.height(); }
+
+	void setTransform(std::optional<Affine> transform) { m_renderer.setTransform(transform); }
 
 	void render(
 		osg::RenderInfo& renderInfo,
@@ -74,10 +79,15 @@ TextureRenderer::TextureRenderer(
 ):
 m_impl(std::make_unique<Impl>(std::move(rivPath), width, height)) {}
 
+TextureRenderer::TextureRenderer(DrawFunction draw, uint32_t width, uint32_t height):
+m_impl(std::make_unique<Impl>(std::move(draw), width, height)) {}
+
 TextureRenderer::~TextureRenderer() = default;
 
 uint32_t TextureRenderer::width() const { return m_impl->width(); }
 uint32_t TextureRenderer::height() const { return m_impl->height(); }
+
+void TextureRenderer::setTransform(std::optional<Affine> transform) { m_impl->setTransform(transform); }
 
 void TextureRenderer::render(
 	osg::RenderInfo& renderInfo,
